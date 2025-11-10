@@ -1,0 +1,50 @@
+.sidebar .cc-ajax-search-results {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.sidebar .cc-ajax-search-heading {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.sidebar .cc-ajax-search-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sidebar .cc-ajax-search-item + .cc-ajax-search-item {
+  margin-top: 0.5rem;
+}
+
+.sidebar .cc-ajax-search-item a {
+  display: block;
+  text-decoration: none;
+}
+
+.sidebar .cc-ajax-search-title {
+  display: block;
+  font-weight: 500;
+}
+
+.sidebar .cc-ajax-search-date {
+  display: block;
+  opacity: 0.8;
+  font-size: 12px;
+}
+
+.sidebar .cc-ajax-search-excerpt {
+  display: block;
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.sidebar .cc-ajax-search-empty,
+.sidebar .cc-ajax-search-error {
+  font-size: 13px;
+  opacity: 0.9;
+}
