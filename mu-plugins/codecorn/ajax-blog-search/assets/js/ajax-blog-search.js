@@ -198,7 +198,6 @@ jQuery(function ($) {
     });
   }
   //===== collapsable - floating sidebar | BEGIN ======= //
-
   function initSidebarToggle() {
     if (
       typeof CC_Ajax_Blog_Search === "undefined" ||
@@ -220,12 +219,16 @@ jQuery(function ($) {
       return;
     }
 
-    // placeholder per ricordare la posizione originale
+    // feature davvero attivo
+    document.body.classList.add("cc-sidebar-toggle-enabled");
+
+    // placeholder per posizione originale
     var $placeholder = $(
       '<div class="cc-sidebar-placeholder" style="display:none;"></div>'
     );
     $placeholder.insertBefore($sidebarInner);
 
+    // pannello overlay
     var $panel = $('<div class="cc-sidebar-panel"></div>');
     var $panelInner = $('<div class="cc-sidebar-panel__inner"></div>');
     var $close = $(
@@ -237,6 +240,7 @@ jQuery(function ($) {
     $panel.append($panelInner);
     $("body").append($panel);
 
+    // toggle button
     var toggleClass = "cc-sidebar-toggle";
     if (mode === "top") {
       toggleClass += " cc-sidebar-toggle--top";
@@ -255,15 +259,15 @@ jQuery(function ($) {
     }
 
     function openPanel() {
-      $panel.addClass("cc-sidebar-panel--open");
+      $panel.addClass("cc-sidebar-panel--open").show();
       $toggle.addClass("cc-sidebar-toggle--active");
-      $("body").addClass("cc-sidebar-panel-open");
+      document.body.classList.add("cc-sidebar-panel-open");
     }
 
     function closePanel() {
-      $panel.removeClass("cc-sidebar-panel--open");
+      $panel.removeClass("cc-sidebar-panel--open").hide();
       $toggle.removeClass("cc-sidebar-toggle--active");
-      $("body").removeClass("cc-sidebar-panel-open");
+      document.body.classList.remove("cc-sidebar-panel-open");
     }
 
     $toggle.on("click", function () {
@@ -278,7 +282,7 @@ jQuery(function ($) {
       closePanel();
     });
 
-    // chiudi pannello cliccando fuori (overlay)
+    // chiudi cliccando sull’overlay scuro fuori dal pannello
     $panel.on("click", function (e) {
       if (e.target === this) {
         closePanel();
@@ -287,33 +291,41 @@ jQuery(function ($) {
 
     function handleResize() {
       if (isMobile()) {
-        // mobile: sidebar dentro il pannello, widget area originale nascosta
+        // mobile: sidebar dentro pannello, chiuso di default
         if (!$panelInner.find(".sidebar_inner").length) {
           $panelInner.append($sidebarInner);
         }
-        $toggle.show();
-        $panel.show();
-        $placeholder.show();
+
+        $toggle.show(); // bottone visibile
+        $placeholder.show(); // placeholder mantiene la posizione logica
+
+        // assicurati che all’inizio sia CHIUSO
+        $panel.removeClass("cc-sidebar-panel--open").hide();
+        document.body.classList.remove("cc-sidebar-panel-open");
+        $toggle.removeClass("cc-sidebar-toggle--active");
       } else {
-        // desktop: riportiamo tutto com era
+        // desktop: riportiamo sidebar dov’era e spegniamo tutto
         closePanel();
-        if ($sidebarInner.parent()[0] !== $placeholder.parent()[0]) {
+
+        if (
+          $placeholder.parent().length &&
+          !$placeholder.next().is($sidebarInner)
+        ) {
           $sidebarInner.insertAfter($placeholder);
         }
+
         $toggle.hide();
         $panel.hide();
         $placeholder.hide();
       }
     }
 
-    // inizializza
+    // init: pannello chiuso
     handleResize();
-
-    jQuery(window).on("resize", function () {
-      handleResize();
-    });
+    jQuery(window).on("resize", handleResize);
   }
   //===== collapsable - floating sidebar | END ======= //
+
   initAjaxSearch();
   initSidebarToggle(); // collapsed or floating sidebar
 });

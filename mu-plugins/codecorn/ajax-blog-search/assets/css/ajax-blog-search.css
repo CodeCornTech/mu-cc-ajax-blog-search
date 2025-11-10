@@ -143,12 +143,11 @@
 }
 
 /* ===== THUMB SECTION END ===== */
+/*===== collapsable - floating sidebar | BEGIN ======= */
 
-
-/*===== collapsable - floating sidebar | BEGIN ======= *//*===== collapsable - floating sidebar | BEGIN ======= */
 /* ===== Sidebar mobile overlay ===== */
 
-.cc-sidebar-panel {
+body.cc-sidebar-toggle-enabled .cc-sidebar-panel {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.55);
@@ -156,20 +155,21 @@
   z-index: 9998;
 }
 
-.cc-sidebar-panel__inner {
+body.cc-sidebar-toggle-enabled .cc-sidebar-panel__inner {
   position: absolute;
   right: 0;
   top: 0;
   bottom: 0;
-  width: 80%;
-  max-width: 360px;
+  width: auto;
+  max-width: 99vw;
   background: #111111;
   box-shadow: -18px 0 40px rgba(0, 0, 0, 0.6);
   padding: 16px 18px;
   overflow-y: auto;
+  border-left: 2px solid #c1a269;
 }
 
-.cc-sidebar-panel__close {
+body.cc-sidebar-toggle-enabled .cc-sidebar-panel__close {
   background: transparent;
   border: none;
   color: #f7f7f7;
@@ -181,13 +181,13 @@
 }
 
 /* Stato aperto */
-.cc-sidebar-panel--open {
+body.cc-sidebar-toggle-enabled .cc-sidebar-panel.cc-sidebar-panel--open {
   display: block;
 }
 
 /* ===== Toggle button ===== */
 
-.cc-sidebar-toggle {
+body.cc-sidebar-toggle-enabled .cc-sidebar-toggle {
   display: none; /* di default nascosto, JS lo mostra solo su mobile */
   border: none;
   cursor: pointer;
@@ -205,14 +205,14 @@
 }
 
 /* floating bottom-right */
-.cc-sidebar-toggle--floating {
+body.cc-sidebar-toggle-enabled .cc-sidebar-toggle--floating {
   position: fixed;
   right: 18px;
   bottom: 18px;
 }
 
 /* fixed top (tipo barra sopra il contenuto) */
-.cc-sidebar-toggle--top {
+body.cc-sidebar-toggle-enabled .cc-sidebar-toggle--top {
   position: sticky;
   top: 0;
   margin: 0 auto 12px;
@@ -220,23 +220,42 @@
 }
 
 /* stato attivo */
-.cc-sidebar-toggle--active {
+body.cc-sidebar-toggle-enabled .cc-sidebar-toggle--active {
   background: #c1a269;
   color: #111111;
 }
 
 /* blocco scroll quando overlay aperto */
-body.cc-sidebar-panel-open {
+body.cc-sidebar-toggle-enabled.cc-sidebar-panel-open {
   overflow: hidden;
 }
 
-/* Mobile only (puoi cambiare 992 se vuoi matchare il breakpoint) */
-@media (max-width: 991px) {
-  .sidebar.widget_area {
-    /* la colonna sidebar originale non serve, tanto la spostiamo nel pannello */
+/* Mobile only (puoi cambiare 1023 se vuoi matchare il breakpoint) */
+@media (max-width: 1023px) and (min-width: 768.1px) {
+  body.cc-sidebar-toggle-enabled .cc-sidebar-panel__inner {
+    max-width: 45vw;
+  }
+}
+@media (max-width: 1023px) {
+  /* mostra il toggle solo su mobile */
+  body.cc-sidebar-toggle-enabled .cc-sidebar-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* la colonna sidebar originale non serve, tanto la spostiamo nel pannello */
+  body.cc-sidebar-toggle-enabled .sidebar.widget_area {
     display: none;
   }
 }
-
-
+/* Box risultati : nascosto finché non ha contenuto */
+body.cc-sidebar-toggle-enabled .cc-ajax-search-results {
+  margin: 8px 0 0 0;
+}
+/* spaziatura fra i widget */
+body.cc-sidebar-toggle-enabled .sidebar_inner aside.widget {
+  margin-bottom: 25px;
+}
+/*===== collapsable - floating sidebar | END ======= */
 /*===== collapsable - floating sidebar | END ======= */
