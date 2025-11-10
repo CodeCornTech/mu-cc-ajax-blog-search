@@ -20,7 +20,7 @@ class Plugin
 
     protected $base_url;
 
-    const string VERSION = '1.0.0';
+    const string VERSION = '1.0.1';
 
     const string HANDLE = 'cc-ajax-blog-search';
 
@@ -46,10 +46,9 @@ class Plugin
     protected function register_hooks()
     {
 
-        add_action('wp_enqueue_scripts', array($this, 'enqueue_assets'));
-
-        add_action('wp_ajax_cc_ajax_blog_search', array($this, 'handle_ajax_search'));
-        add_action('wp_ajax_nopriv_cc_ajax_blog_search', array($this, 'handle_ajax_search'));
+        add_action('wp_enqueue_scripts', [$this, 'enqueue_assets']);
+        add_action('wp_ajax_cc_ajax_blog_search', [$this, 'handle_ajax_search']);
+        add_action('wp_ajax_nopriv_cc_ajax_blog_search', [$this, 'handle_ajax_search']);
     }
 
     public function enqueue_assets()
@@ -91,6 +90,7 @@ class Plugin
                 'nonce'           => wp_create_nonce('cc_ajax_blog_search'),
                 'no_results_text' => __('Nessun articolo trovato .', 'mu-cc-ajax-blog-search'),
                 'error_text'      => __('Si è verificato un errore , riprova più tardi .', 'mu-cc-ajax-blog-search'),
+                'show_thumb'      => (bool) apply_filters('cc_ajax_blog_search_show_thumbnail', false),
             )
         );
     }
@@ -103,6 +103,9 @@ class Plugin
         $term = isset($_REQUEST['s'])
             ? sanitize_text_field(wp_unslash($_REQUEST['s']))
             : '';
+        // 🔧 Config thumbnail via filter
+        $show_thumb = (bool) apply_filters('cc_ajax_blog_search_show_thumbnail', false);
+        $thumb_size = apply_filters('cc_ajax_blog_search_thumbnail_size', 'thumbnail');
 
         if ('' === $term) {
             wp_send_json_success(
@@ -129,11 +132,21 @@ class Plugin
 
                 $query->the_post();
 
+                $thumb_url = '';
+
+                if ($show_thumb) {
+                    $url = get_the_post_thumbnail_url(get_the_ID(), $thumb_size);
+                    if ($url) {
+                        $thumb_url = esc_url($url);
+                    }
+                }
+
                 $results[] = array(
                     'title'   => get_the_title(),
                     'url'     => get_permalink(),
                     'date'    => get_the_date(),
                     'excerpt' => wp_trim_words(get_the_excerpt(), 18, '…'),
+                    'thumb'   => $thumb_url,
                 );
             }
 

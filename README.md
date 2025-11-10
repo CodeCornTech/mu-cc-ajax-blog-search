@@ -46,7 +46,7 @@ mu-plugins /
           ajax-blog-search.js       # logica AJAX lato client
         css /
           ajax-blog-search.css      # stile minimo risultati ( opzionale )
-````
+```
 
 ---
 
@@ -63,12 +63,12 @@ Assicurati che il file `mu-cc-ajax-blog-search.php` si trovi **direttamente** de
 
 2 . Verifica che WordPress stia caricando il MU plugin :
 
-* vai in **Bacheca → Plugin → Plugin uso obbligato ( Must Use )**
-* dovresti vedere `MU CC Ajax Blog Search` nella lista
+- vai in **Bacheca → Plugin → Plugin uso obbligato ( Must Use )**
+- dovresti vedere `MU CC Ajax Blog Search` nella lista
 
 3 . Verifica che il tema usi un **widget di ricerca** standard , ad esempio il classico widget `Cerca` nella sidebar del blog :
 
-* se il markup contiene `<aside class="widget widget_search">` e un `<form class="search-form">` , il plugin può agganciarsi automaticamente
+- se il markup contiene `<aside class="widget widget_search">` e un `<form class="search-form">` , il plugin può agganciarsi automaticamente
 
 Non serve alcuna configurazione nel backend .
 
@@ -80,24 +80,25 @@ Non serve alcuna configurazione nel backend .
 
 La classe principale `CodeCorn \ AjaxBlogSearch \ Plugin` :
 
-* registra lo script JS e , se presente , il CSS
-* espone un endpoint AJAX :
+- registra lo script JS e , se presente , il CSS
+- espone un endpoint AJAX :
 
-  * `action = cc_ajax_blog_search`
-  * disponibile sia per utenti loggati che non loggati
-* esegue una query `WP_Query` sui post del blog usando il parametro `s` passato dal client
-* restituisce un JSON del tipo :
+  - `action = cc_ajax_blog_search`
+  - disponibile sia per utenti loggati che non loggati
+
+- esegue una query `WP_Query` sui post del blog usando il parametro `s` passato dal client
+- restituisce un JSON del tipo :
 
 ```json
 {
-  "success" : true ,
-  "data" : {
-    "results" : [
+  "success": true,
+  "data": {
+    "results": [
       {
-        "title" : "Esempio articolo" ,
-        "url" : "https : / / sito . it / esempio articolo /" ,
-        "date" : "10 Novembre 2025" ,
-        "excerpt" : "Estratto accorciato del contenuto …"
+        "title": "Esempio articolo",
+        "url": "https : / / sito . it / esempio articolo /",
+        "date": "10 Novembre 2025",
+        "excerpt": "Estratto accorciato del contenuto …"
       }
     ]
   }
@@ -108,17 +109,18 @@ La classe principale `CodeCorn \ AjaxBlogSearch \ Plugin` :
 
 Lo script `assets / js / ajax-blog-search.js` :
 
-* cerca tutti i form `.widget_search form . search-form`
-* per ciascuno :
+- cerca tutti i form `.widget_search form . search-form`
+- per ciascuno :
 
-  * crea un container `<div class = "cc-ajax-search-results">` subito dopo il form
-  * intercetta `submit` del form e i `keyup` nel campo di ricerca
-  * effettua una richiesta AJAX a `admin - ajax . php` con :
+  - crea un container `<div class = "cc-ajax-search-results">` subito dopo il form
+  - intercetta `submit` del form e i `keyup` nel campo di ricerca
+  - effettua una richiesta AJAX a `admin - ajax . php` con :
 
-    * `action = cc_ajax_blog_search`
-    * `nonce` per sicurezza
-    * parametro `s` con il valore digitato
-  * renderizza i risultati sotto il form
+    - `action = cc_ajax_blog_search`
+    - `nonce` per sicurezza
+    - parametro `s` con il valore digitato
+
+  - renderizza i risultati sotto il form
 
 Se il campo di ricerca è vuoto , la box risultati viene svuotata .
 
@@ -152,12 +154,23 @@ $args = array(
 
 Oppure , in una futura versione , leggere il valore da un filtro o costante .
 
+👉 Per attivare i thumb ti basta , da tema / altro mu-plugin:
+
+```php
+add_filter( 'cc_ajax_blog_search_show_thumbnail', '__return_true' );
+
+// opzionale : size custom
+add_filter( 'cc_ajax_blog_search_thumbnail_size', function () {
+    return 'medium'; // o una image size custom
+});
+```
+
 ### Traduzioni testi frontend
 
 I testi mostrati dal JS vengono passati tramite `wp_localize_script` :
 
-* `no_results_text`
-* `error_text`
+- `no_results_text`
+- `error_text`
 
 Puoi sovrascriverli tramite filtro in un altro MU plugin o nel tema :
 
@@ -181,7 +194,7 @@ Se vuoi controllare che l AJAX funzioni :
 3 . Scrivi nel campo di ricerca almeno 3 caratteri
 4 . Dovresti vedere chiamate a :
 
-* `admin - ajax . php ? action = cc_ajax_blog_search & s = ...`
+- `admin - ajax . php ? action = cc_ajax_blog_search & s = ...`
 
 Se la risposta è `200` con un JSON valido , il lato PHP è ok .
 
@@ -191,10 +204,10 @@ Se non vedi il container risultati , verifica il CSS del tema o eventuali confli
 
 ## Roadmap
 
-* Filtro per post type custom
-* Opzione per usare un template markup personalizzato via hook PHP
-* Supporto per multiple istanze con comportamenti diversi
-* Tiny helper per limitare in automatico la ricerca alla categoria del blog corrente
+- Filtro per post type custom
+- Opzione per usare un template markup personalizzato via hook PHP
+- Supporto per multiple istanze con comportamenti diversi
+- Tiny helper per limitare in automatico la ricerca alla categoria del blog corrente
 
 ---
 

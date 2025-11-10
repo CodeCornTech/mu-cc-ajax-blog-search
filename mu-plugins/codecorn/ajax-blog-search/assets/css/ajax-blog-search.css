@@ -1,50 +1,115 @@
-.sidebar .cc-ajax-search-results {
-  margin-top: 1rem;
-  padding: 0.75rem 1rem;
-  background: rgba(0, 0, 0, 0.25);
-  border-radius: 6px;
+/* Box risultati : nascosto finché non ha contenuto */
+.cc-ajax-search-results {
+  display: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  margin: 8px 38px 0px;
+  background: #111111;
+  border-radius: 12px;
+  padding: 12px 16px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+  z-index: 50;
+  border: 1px solid #c1a269;
+}
+
+
+
+/* Quando ci sono contenuti , il JS aggiunge questa classe */
+.cc-ajax-search-results.cc-ajax-search-results--visible {
+  display: block;
+}
+
+/* Titolo risultati */
+.cc-ajax-search-heading {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 8px;
+  color: #f7f7f7;
+}
+
+/* Lista senza bullets */
+.cc-ajax-search-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 !important;
+}
+
+/* Spaziatura elementi */
+.cc-ajax-search-item + .cc-ajax-search-item {
+    margin-top: 8px;
+    border-top: 1px solid #c1a26973;
+    padding-bottom: 8px;
+    padding-top: 16px;
+}
+.cc-ajax-search-item a {
+  display: block;
+  text-decoration: none;
+  color: #f7f7f7;
+}
+
+.cc-ajax-search-title {
+  display: block;
+  color: #c1a269;
+  font-weight: 500;
   font-size: 14px;
 }
 
-.sidebar .cc-ajax-search-heading {
-  font-weight: 600;
-  margin-bottom: 0.5rem;
-}
-
-.sidebar .cc-ajax-search-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.sidebar .cc-ajax-search-item + .cc-ajax-search-item {
-  margin-top: 0.5rem;
-}
-
-.sidebar .cc-ajax-search-item a {
-  display: block;
-  text-decoration: none;
-}
-
-.sidebar .cc-ajax-search-title {
-  display: block;
-  font-weight: 500;
-}
-
-.sidebar .cc-ajax-search-date {
+.cc-ajax-search-date {
   display: block;
   opacity: 0.8;
   font-size: 12px;
 }
 
-.sidebar .cc-ajax-search-excerpt {
+.cc-ajax-search-excerpt {
   display: block;
   font-size: 12px;
   opacity: 0.8;
 }
 
-.sidebar .cc-ajax-search-empty,
-.sidebar .cc-ajax-search-error {
+/* Messaggi vuoto / errore */
+.cc-ajax-search-empty,
+.cc-ajax-search-error {
   font-size: 13px;
   opacity: 0.9;
+  color: #f7f7f7;
 }
+
+.cc-ajax-search-item>a::before{
+  display: none !important;
+}
+
+/* ===== THUMB SECTION ==== */
+/* Layout con thumbnail */
+.cc-ajax-search-item--with-thumb > a {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.cc-ajax-search-thumb {
+  flex-shrink: 0;
+}
+
+.cc-ajax-search-thumb img {
+  display: block;
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid #c1a26980;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+}
+
+.cc-ajax-search-body {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Se vuoi un po più compatta la voce con thumb */
+.cc-ajax-search-item--with-thumb + .cc-ajax-search-item--with-thumb {
+  padding-top: 14px;
+  padding-bottom: 12px;
+}
+/* ===== THUMB SECTION END ===== */
