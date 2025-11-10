@@ -48,3 +48,4 @@ wp-config.php
 #/wp-content/themes
 .DS_Store
 /.vscode
+/mu-plugins/codecorn/ajax-blog-search/assets/css/_STASH

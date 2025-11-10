@@ -65,7 +65,6 @@ jQuery(function ($) {
           $("<div>").text(term).html() +
           '</strong>"</div>';
         html += '<ul class="cc-ajax-search-list">';
-
         items.forEach(function (item) {
           var hasThumb = CC_Ajax_Blog_Search.show_thumb && item.thumb;
 
@@ -78,28 +77,51 @@ jQuery(function ($) {
           html += '<a href="' + item.url + '">';
 
           if (hasThumb) {
+            // ROW: thumb + title (2 colonne)
+            html += '<span class="cc-ajax-search-row">';
+
+            // Colonna thumb + data sotto
+            html += '<span class="cc-ajax-search-thumb-col">';
             html += '<span class="cc-ajax-search-thumb">';
             html += '<img src="' + item.thumb + '" alt="">';
             html += "</span>";
-            html += '<span class="cc-ajax-search-body">';
-          }
+            if (item.date) {
+              html +=
+                '<span class="cc-ajax-search-date cc-ajax-search-date--under-thumb">' +
+                item.date +
+                "</span>";
+            }
+            html += "</span>"; // .cc-ajax-search-thumb-col
 
-          html +=
-            '<span class="cc-ajax-search-title">' + item.title + "</span>";
-
-          if (item.date) {
+            // Colonna titolo (solo testo)
+            html += '<span class="cc-ajax-search-body-col">';
             html +=
-              '<span class="cc-ajax-search-date">' + item.date + "</span>";
-          }
-          if (item.excerpt) {
-            html +=
-              '<span class="cc-ajax-search-excerpt">' +
-              item.excerpt +
-              "</span>";
-          }
+              '<span class="cc-ajax-search-title">' + item.title + "</span>";
+            html += "</span>"; // .cc-ajax-search-body-col
 
-          if (hasThumb) {
-            html += "</span>"; // chiude .cc-ajax-search-body
+            html += "</span>"; // .cc-ajax-search-row
+
+            // Excerpt a 100% sotto la row
+            if (item.excerpt) {
+              html +=
+                '<span class="cc-ajax-search-excerpt cc-ajax-search-excerpt--full">';
+              html += item.excerpt;
+              html += "</span>";
+            }
+          } else {
+            // Fallback senza thumb: layout semplice verticale
+            html +=
+              '<span class="cc-ajax-search-title">' + item.title + "</span>";
+            if (item.date) {
+              html +=
+                '<span class="cc-ajax-search-date">' + item.date + "</span>";
+            }
+            if (item.excerpt) {
+              html +=
+                '<span class="cc-ajax-search-excerpt">' +
+                item.excerpt +
+                "</span>";
+            }
           }
 
           html += "</a>";

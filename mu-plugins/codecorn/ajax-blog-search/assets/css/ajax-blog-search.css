@@ -14,8 +14,6 @@
   border: 1px solid #c1a269;
 }
 
-
-
 /* Quando ci sono contenuti , il JS aggiunge questa classe */
 .cc-ajax-search-results.cc-ajax-search-results--visible {
   display: block;
@@ -38,10 +36,10 @@
 
 /* Spaziatura elementi */
 .cc-ajax-search-item + .cc-ajax-search-item {
-    margin-top: 8px;
-    border-top: 1px solid #c1a26973;
-    padding-bottom: 8px;
-    padding-top: 16px;
+  margin-top: 8px;
+  border-top: 1px solid #c1a26973;
+  padding-bottom: 8px;
+  padding-top: 16px;
 }
 .cc-ajax-search-item a {
   display: block;
@@ -49,8 +47,11 @@
   color: #f7f7f7;
 }
 
+/* Titolo: via margini ereditati dal tema */
 .cc-ajax-search-title {
   display: block;
+  margin: -12px 0 0 0 !important; /* 👈 importante */
+  line-height: 1.35;
   color: #c1a269;
   font-weight: 500;
   font-size: 14px;
@@ -76,40 +77,69 @@
   color: #f7f7f7;
 }
 
-.cc-ajax-search-item>a::before{
+.cc-ajax-search-item > a::before {
   display: none !important;
 }
 
 /* ===== THUMB SECTION ==== */
-/* Layout con thumbnail */
+/* Item con thumb: il link diventa un blocco verticale */
 .cc-ajax-search-item--with-thumb > a {
+  display: block;
+}
+
+/* ROW: thumb + titolo affiancati */
+.cc-ajax-search-row {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
+  align-items: center; /* 👈 align items center come volevi */
+  gap: 14px;
 }
 
-.cc-ajax-search-thumb {
+/* Colonna thumb + data */
+.cc-ajax-search-thumb-col {
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
 }
 
+/* Thumb (puoi tenere i tuoi radius / border attuali) */
 .cc-ajax-search-thumb img {
   display: block;
   width: 64px;
   height: 64px;
   object-fit: cover;
-  border-radius: 10px;
+  border-radius: 999px; /* rotondo stile avatar */
   border: 1px solid #c1a26980;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
 }
 
-.cc-ajax-search-body {
-  flex: 1;
-  min-width: 0;
+/* Data sotto il thumb */
+.cc-ajax-search-date--under-thumb {
+  font-size: 11px;
+  opacity: 0.8;
 }
 
-/* Se vuoi un po più compatta la voce con thumb */
+/* Colonna titolo: centriamo verticalmente il blocco testo */
+.cc-ajax-search-body-col {
+  flex: 1;
+  min-width: 0;
+  display: flex; /* 👈 nuovo */
+  align-items: center; /* 👈 centra il titolo rispetto alla row */
+  min-height: 64px; /* ≃ altezza thumb, aggiusta se cambi size */
+}
+
+/* Excerpt full-width sotto la row */
+.cc-ajax-search-excerpt--full {
+  display: block;
+  margin-top: 10px;
+  width: 100%;
+}
+
+/* Se vuoi stringere un filo la spaziatura tra item con thumb */
 .cc-ajax-search-item--with-thumb + .cc-ajax-search-item--with-thumb {
   padding-top: 14px;
   padding-bottom: 12px;
 }
+
 /* ===== THUMB SECTION END ===== */
