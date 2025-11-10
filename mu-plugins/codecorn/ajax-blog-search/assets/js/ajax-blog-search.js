@@ -197,6 +197,123 @@ jQuery(function ($) {
       });
     });
   }
+  //===== collapsable - floating sidebar | BEGIN ======= //
 
+  function initSidebarToggle() {
+    if (
+      typeof CC_Ajax_Blog_Search === "undefined" ||
+      !CC_Ajax_Blog_Search.sidebar_toggle ||
+      !CC_Ajax_Blog_Search.sidebar_toggle.enabled
+    ) {
+      return;
+    }
+
+    var cfg = CC_Ajax_Blog_Search.sidebar_toggle;
+    var breakpoint = cfg.breakpoint || 992;
+    var mode = cfg.mode || "floating";
+    var label = cfg.label || "Filtri";
+
+    var $ = jQuery;
+
+    var $sidebarInner = $(".sidebar.widget_area .sidebar_inner").first();
+    if (!$sidebarInner.length) {
+      return;
+    }
+
+    // placeholder per ricordare la posizione originale
+    var $placeholder = $(
+      '<div class="cc-sidebar-placeholder" style="display:none;"></div>'
+    );
+    $placeholder.insertBefore($sidebarInner);
+
+    var $panel = $('<div class="cc-sidebar-panel"></div>');
+    var $panelInner = $('<div class="cc-sidebar-panel__inner"></div>');
+    var $close = $(
+      '<button type="button" class="cc-sidebar-panel__close" aria-label="Chiudi filtri">&times;</button>'
+    );
+
+    $panelInner.append($close);
+    $panelInner.append($sidebarInner);
+    $panel.append($panelInner);
+    $("body").append($panel);
+
+    var toggleClass = "cc-sidebar-toggle";
+    if (mode === "top") {
+      toggleClass += " cc-sidebar-toggle--top";
+    } else {
+      toggleClass += " cc-sidebar-toggle--floating";
+    }
+
+    var $toggle = $(
+      '<button type="button" class="' + toggleClass + '"></button>'
+    );
+    $toggle.text(label);
+    $("body").append($toggle);
+
+    function isMobile() {
+      return window.innerWidth <= breakpoint;
+    }
+
+    function openPanel() {
+      $panel.addClass("cc-sidebar-panel--open");
+      $toggle.addClass("cc-sidebar-toggle--active");
+      $("body").addClass("cc-sidebar-panel-open");
+    }
+
+    function closePanel() {
+      $panel.removeClass("cc-sidebar-panel--open");
+      $toggle.removeClass("cc-sidebar-toggle--active");
+      $("body").removeClass("cc-sidebar-panel-open");
+    }
+
+    $toggle.on("click", function () {
+      if ($panel.hasClass("cc-sidebar-panel--open")) {
+        closePanel();
+      } else {
+        openPanel();
+      }
+    });
+
+    $close.on("click", function () {
+      closePanel();
+    });
+
+    // chiudi pannello cliccando fuori (overlay)
+    $panel.on("click", function (e) {
+      if (e.target === this) {
+        closePanel();
+      }
+    });
+
+    function handleResize() {
+      if (isMobile()) {
+        // mobile: sidebar dentro il pannello, widget area originale nascosta
+        if (!$panelInner.find(".sidebar_inner").length) {
+          $panelInner.append($sidebarInner);
+        }
+        $toggle.show();
+        $panel.show();
+        $placeholder.show();
+      } else {
+        // desktop: riportiamo tutto com era
+        closePanel();
+        if ($sidebarInner.parent()[0] !== $placeholder.parent()[0]) {
+          $sidebarInner.insertAfter($placeholder);
+        }
+        $toggle.hide();
+        $panel.hide();
+        $placeholder.hide();
+      }
+    }
+
+    // inizializza
+    handleResize();
+
+    jQuery(window).on("resize", function () {
+      handleResize();
+    });
+  }
+  //===== collapsable - floating sidebar | END ======= //
   initAjaxSearch();
+  initSidebarToggle(); // collapsed or floating sidebar
 });

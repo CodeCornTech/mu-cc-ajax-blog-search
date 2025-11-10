@@ -165,6 +165,15 @@ add_filter( 'cc_ajax_blog_search_thumbnail_size', function () {
 });
 ```
 
+Toggled o floating sidebar Esempio di attivazione dal tema / altro mu-plugin:
+
+```php
+add_filter( 'cc_ajax_blog_search_sidebar_toggle_enabled', '__return_true' );
+// floating (default) oppure 'top'
+add_filter( 'cc_ajax_blog_search_sidebar_toggle_mode', function () {
+    return 'floating'; // oppure 'top'
+});
+```
 ### Traduzioni testi frontend
 
 I testi mostrati dal JS vengono passati tramite `wp_localize_script` :

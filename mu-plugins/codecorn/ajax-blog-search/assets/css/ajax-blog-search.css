@@ -143,3 +143,100 @@
 }
 
 /* ===== THUMB SECTION END ===== */
+
+
+/*===== collapsable - floating sidebar | BEGIN ======= *//*===== collapsable - floating sidebar | BEGIN ======= */
+/* ===== Sidebar mobile overlay ===== */
+
+.cc-sidebar-panel {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: none;
+  z-index: 9998;
+}
+
+.cc-sidebar-panel__inner {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 80%;
+  max-width: 360px;
+  background: #111111;
+  box-shadow: -18px 0 40px rgba(0, 0, 0, 0.6);
+  padding: 16px 18px;
+  overflow-y: auto;
+}
+
+.cc-sidebar-panel__close {
+  background: transparent;
+  border: none;
+  color: #f7f7f7;
+  font-size: 24px;
+  line-height: 1;
+  padding: 0;
+  margin-bottom: 12px;
+  cursor: pointer;
+}
+
+/* Stato aperto */
+.cc-sidebar-panel--open {
+  display: block;
+}
+
+/* ===== Toggle button ===== */
+
+.cc-sidebar-toggle {
+  display: none; /* di default nascosto, JS lo mostra solo su mobile */
+  border: none;
+  cursor: pointer;
+  z-index: 9999;
+
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  background: #111111;
+  color: #f7f7f7;
+  border-radius: 999px;
+  padding: 10px 18px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+  border: 1px solid #c1a269;
+}
+
+/* floating bottom-right */
+.cc-sidebar-toggle--floating {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+}
+
+/* fixed top (tipo barra sopra il contenuto) */
+.cc-sidebar-toggle--top {
+  position: sticky;
+  top: 0;
+  margin: 0 auto 12px;
+  display: block;
+}
+
+/* stato attivo */
+.cc-sidebar-toggle--active {
+  background: #c1a269;
+  color: #111111;
+}
+
+/* blocco scroll quando overlay aperto */
+body.cc-sidebar-panel-open {
+  overflow: hidden;
+}
+
+/* Mobile only (puoi cambiare 992 se vuoi matchare il breakpoint) */
+@media (max-width: 991px) {
+  .sidebar.widget_area {
+    /* la colonna sidebar originale non serve, tanto la spostiamo nel pannello */
+    display: none;
+  }
+}
+
+
+/*===== collapsable - floating sidebar | END ======= */

@@ -20,7 +20,7 @@ class Plugin
 
     protected $base_url;
 
-    const string VERSION = '1.0.1';
+    const string VERSION = '1.0.12';
 
     const string HANDLE = 'cc-ajax-blog-search';
 
@@ -91,6 +91,18 @@ class Plugin
                 'no_results_text' => __('Nessun articolo trovato .', 'mu-cc-ajax-blog-search'),
                 'error_text'      => __('Si è verificato un errore , riprova più tardi .', 'mu-cc-ajax-blog-search'),
                 'show_thumb'      => (bool) apply_filters('cc_ajax_blog_search_show_thumbnail', false),
+
+                // ⚙️ Config sidebar mobile toggle
+                'sidebar_toggle'  => array(
+                    // di default disattivato, lo accendi via filter
+                    'enabled'    => (bool) apply_filters('cc_ajax_blog_search_sidebar_toggle_enabled', false),
+                    // 'floating' | 'top'
+                    'mode'       => apply_filters('cc_ajax_blog_search_sidebar_toggle_mode', 'floating'),
+                    // breakpoint mobile (px)
+                    'breakpoint' => (int) apply_filters('cc_ajax_blog_search_sidebar_toggle_breakpoint', 992),
+                    // label nel bottone
+                    'label'      => apply_filters('cc_ajax_blog_search_sidebar_toggle_label', __('Filtri & ricerca', 'mu-cc-ajax-blog-search')),
+                ),
             )
         );
     }
