@@ -4,8 +4,9 @@
  * Plugin Name: MU CC Ajax Blog Search
  * Description: Attiva la ricerca AJAX nei widget di ricerca del blog con namespace CodeCorn .
  * Author: CodeCorn™ Technology
- * Version: 1.0.12
+ * Version: 1.0.14
  * Author URI: https://github.com/CodeCornTech
+ * Plugin URI: https://github.com/CodeCornTech/mu-cc-ajax-blog-search
  */
 
 defined('ABSPATH') ||
@@ -24,6 +25,5 @@ CodeCorn\AjaxBlogSearch\Plugin::boot(
 //👉 Per attivare i thumb ti basta , da tema / altro mu-plugin:
 add_filter( 'cc_ajax_blog_search_show_thumbnail', '__return_true' );
 add_filter( 'cc_ajax_blog_search_sidebar_toggle_enabled', '__return_true' );
-add_filter( 'cc_ajax_blog_search_sidebar_toggle_mode', function () {
-    return 'floating'; // oppure 'top'
-});
+add_filter( 'cc_ajax_blog_search_sidebar_toggle_mode', fn () => 'floating'); // oppure 'top'
+#add_filter('cc_ajax_blog_search_debug', '__return_true'); # o commenta per disabilitare

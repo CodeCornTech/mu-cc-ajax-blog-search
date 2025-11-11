@@ -20,9 +20,9 @@ class Plugin
 
     protected $base_url;
 
-    const string VERSION = '1.0.12';
+    public const string VERSION = '1.0.14';
 
-    const string HANDLE = 'cc-ajax-blog-search';
+    public const string HANDLE = 'cc-ajax-blog-search';
 
     public static function boot($base_dir, $base_url)
     {
@@ -81,6 +81,15 @@ class Plugin
                 static::VERSION
             );
         }
+        // 🔧 DEBUG FLAG (default → define → filter)
+        $debug = false;
+
+        if (defined('CC_AJAX_BLOG_SEARCH_DEBUG')) {
+            $debug = (bool) CC_AJAX_BLOG_SEARCH_DEBUG;
+        }
+
+        // il filtro vince su tutto
+        $debug = (bool) apply_filters('cc_ajax_blog_search_debug', $debug);
 
         wp_localize_script(
             static::HANDLE,
@@ -91,6 +100,8 @@ class Plugin
                 'no_results_text' => __('Nessun articolo trovato .', 'mu-cc-ajax-blog-search'),
                 'error_text'      => __('Si è verificato un errore , riprova più tardi .', 'mu-cc-ajax-blog-search'),
                 'show_thumb'      => (bool) apply_filters('cc_ajax_blog_search_show_thumbnail', false),
+                // 🔍 DEBUG
+                'debug'           => $debug,
 
                 // ⚙️ Config sidebar mobile toggle
                 'sidebar_toggle'  => array(

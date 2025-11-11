@@ -49,3 +49,5 @@ wp-config.php
 .DS_Store
 /.vscode
 /mu-plugins/codecorn/ajax-blog-search/assets/css/_STASH
+README_*
+TODO_*

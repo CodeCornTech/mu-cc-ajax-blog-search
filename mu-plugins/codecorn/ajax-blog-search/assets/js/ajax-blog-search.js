@@ -1,9 +1,34 @@
 /* CC Ajax Blog Search
  * Aggancia i widget .widget_search e mostra i risultati in un dropdown sotto il campo
  */
-const AJX_CLP_DB = false; // o false in prod
-
 jQuery(function ($) {
+  // ===== DEBUG LAYER =====
+  var AJX_CLP_DBG = (function () {
+    // 1️⃣ override manuale
+    if (typeof window.AJX_CLP_DB !== "undefined") {
+      return !!window.AJX_CLP_DB;
+    }
+
+    // 2️⃣ valore dal PHP via wp_localize_script
+    if (
+      typeof window.CC_Ajax_Blog_Search !== "undefined" &&
+      typeof CC_Ajax_Blog_Search.debug !== "undefined"
+    ) {
+      return !!CC_Ajax_Blog_Search.debug;
+    }
+
+    // 3️⃣ default → silenzioso
+    return false;
+  })();
+
+  function dbg() {
+    if (!AJX_CLP_DBG) return;
+    var args = Array.prototype.slice.call(arguments);
+    args.unshift("[AJX-SIDEBAR]");
+    console.log.apply(console, args);
+  }
+  // =======================
+
   function debounce(fn, delay) {
     var t;
     return function () {
@@ -15,17 +40,6 @@ jQuery(function ($) {
       }, delay);
     };
   }
-
-  // ===== DEBUG LAYER =====
-  var AJX_CLP_DBG = typeof AJX_CLP_DB !== "undefined" && AJX_CLP_DB === true;
-
-  function dbg() {
-    if (!AJX_CLP_DBG) return;
-    var args = Array.prototype.slice.call(arguments);
-    args.unshift("[AJX-SIDEBAR]");
-    console.log.apply(console, args);
-  }
-  // =======================
 
   function initAjaxSearch() {
     dbg("initAjaxSearch: start");
@@ -294,7 +308,7 @@ jQuery(function ($) {
     dbg("sidebar: toggle button appended", { mode: mode, label: label });
     // stato iniziale: pannello chiuso
     closePanel();
-    
+
     function isMobile() {
       var mobile = window.innerWidth <= breakpoint;
       dbg("sidebar: isMobile?", mobile, "width:", window.innerWidth);
