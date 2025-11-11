@@ -1,6 +1,8 @@
 /* CC Ajax Blog Search
  * Aggancia i widget .widget_search e mostra i risultati in un dropdown sotto il campo
  */
+const AJX_CLP_DB = false; // o false in prod
+
 jQuery(function ($) {
   function debounce(fn, delay) {
     var t;
@@ -14,17 +16,31 @@ jQuery(function ($) {
     };
   }
 
+  // ===== DEBUG LAYER =====
+  var AJX_CLP_DBG = typeof AJX_CLP_DB !== "undefined" && AJX_CLP_DB === true;
+
+  function dbg() {
+    if (!AJX_CLP_DBG) return;
+    var args = Array.prototype.slice.call(arguments);
+    args.unshift("[AJX-SIDEBAR]");
+    console.log.apply(console, args);
+  }
+  // =======================
+
   function initAjaxSearch() {
+    dbg("initAjaxSearch: start");
     $(".widget_search form.search-form").each(function () {
       var $form = $(this);
 
       if ($form.data("ccAjaxSearchInited")) {
+        dbg("initAjaxSearch: already inited, skipping form", $form.get(0));
         return;
       }
       $form.data("ccAjaxSearchInited", true);
 
       var $input = $form.find("input.search-field");
       if (!$input.length) {
+        dbg("initAjaxSearch: no search-field found in form", $form.get(0));
         return;
       }
 
@@ -41,14 +57,20 @@ jQuery(function ($) {
       $resultsBox.insertAfter($form);
 
       function showBox() {
+        dbg("search: showBox");
         $resultsBox.addClass("cc-ajax-search-results--visible");
       }
 
       function hideBox() {
+        dbg("search: hideBox");
         $resultsBox.removeClass("cc-ajax-search-results--visible").empty();
       }
 
       function renderResults(items, term) {
+        dbg("search: renderResults", {
+          count: items ? items.length : 0,
+          term: term,
+        });
         if (!items || !items.length) {
           $resultsBox.html(
             '<div class="cc-ajax-search-empty">' +
@@ -65,7 +87,7 @@ jQuery(function ($) {
           $("<div>").text(term).html() +
           '</strong>"</div>';
         html += '<ul class="cc-ajax-search-list">';
-        items.forEach(function (item) {
+        items.forEach(function (item, idx) {
           var hasThumb = CC_Ajax_Blog_Search.show_thumb && item.thumb;
 
           var itemClass = "cc-ajax-search-item";
@@ -134,18 +156,19 @@ jQuery(function ($) {
       }
 
       function renderError() {
+        dbg("search: renderError");
         $resultsBox.html(
           '<div class="cc-ajax-search-error">' +
             (CC_Ajax_Blog_Search.error_text || "Errore nella ricerca .") +
             "</div>"
         );
         showBox();
-        // debug minimale
         console.error("CC_Ajax_Blog_Search : AJAX error o risposta non valida");
       }
 
       var doSearch = debounce(function () {
         var term = $input.val().trim();
+        dbg("search: doSearch", { term: term });
 
         // Se campo vuoto → nascondi box
         if (!term) {
@@ -164,21 +187,22 @@ jQuery(function ($) {
           },
         })
           .done(function (resp) {
+            dbg("search: AJAX done", resp);
             if (resp && resp.success && resp.data) {
               renderResults(resp.data.results || [], term);
             } else {
-              // Qui NON dovrebbe mai arrivare con il nostro handler ,
-              // se succede lo tratti come errore reale .
               renderError();
             }
           })
-          .fail(function () {
+          .fail(function (jqXHR, textStatus) {
+            dbg("search: AJAX fail", textStatus, jqXHR.status);
             renderError();
           });
       }, 300);
 
       // Submit classico → in AJAX
       $form.on("submit", function (e) {
+        dbg("search: form submit intercepted");
         e.preventDefault();
         doSearch();
       });
@@ -188,22 +212,30 @@ jQuery(function ($) {
         if (e.key === "Enter") {
           return;
         }
+        dbg("search: keyup", e.key);
         doSearch();
       });
 
-      //On blur puoi eventualmente chiudere il dropdown dopo un attimo ( opzionale )
+      // On blur puoi eventualmente chiudere il dropdown dopo un attimo ( opzionale )
       $input.on("blur", function () {
+        dbg("search: blur input");
         setTimeout(hideBox, 200);
       });
+
+      dbg("initAjaxSearch: form inited", $form.get(0));
     });
   }
+
   //===== collapsable - floating sidebar | BEGIN ======= //
   function initSidebarToggle() {
+    dbg("sidebar: initSidebarToggle() called");
+
     if (
       typeof CC_Ajax_Blog_Search === "undefined" ||
       !CC_Ajax_Blog_Search.sidebar_toggle ||
       !CC_Ajax_Blog_Search.sidebar_toggle.enabled
     ) {
+      dbg("sidebar: sidebar_toggle disabled or missing, abort");
       return;
     }
 
@@ -212,21 +244,26 @@ jQuery(function ($) {
     var mode = cfg.mode || "floating";
     var label = cfg.label || "Filtri";
 
+    dbg("sidebar: config", cfg);
+
     var $ = jQuery;
 
     var $sidebarInner = $(".sidebar.widget_area .sidebar_inner").first();
     if (!$sidebarInner.length) {
+      dbg("sidebar: no .sidebar_inner found, abort");
       return;
     }
 
     // feature davvero attivo
     document.body.classList.add("cc-sidebar-toggle-enabled");
+    dbg("sidebar: cc-sidebar-toggle-enabled added to body");
 
     // placeholder per posizione originale
     var $placeholder = $(
       '<div class="cc-sidebar-placeholder" style="display:none;"></div>'
     );
     $placeholder.insertBefore($sidebarInner);
+    dbg("sidebar: placeholder inserted before sidebar_inner");
 
     // pannello overlay
     var $panel = $('<div class="cc-sidebar-panel"></div>');
@@ -239,6 +276,7 @@ jQuery(function ($) {
     $panelInner.append($sidebarInner);
     $panel.append($panelInner);
     $("body").append($panel);
+    dbg("sidebar: panel & panelInner appended to body");
 
     // toggle button
     var toggleClass = "cc-sidebar-toggle";
@@ -253,24 +291,35 @@ jQuery(function ($) {
     );
     $toggle.text(label);
     $("body").append($toggle);
-
+    dbg("sidebar: toggle button appended", { mode: mode, label: label });
+    // stato iniziale: pannello chiuso
+    closePanel();
+    
     function isMobile() {
-      return window.innerWidth <= breakpoint;
+      var mobile = window.innerWidth <= breakpoint;
+      dbg("sidebar: isMobile?", mobile, "width:", window.innerWidth);
+      return mobile;
     }
 
     function openPanel() {
+      dbg("sidebar: openPanel()");
       $panel.addClass("cc-sidebar-panel--open").show();
       $toggle.addClass("cc-sidebar-toggle--active");
       document.body.classList.add("cc-sidebar-panel-open");
     }
 
     function closePanel() {
+      dbg("sidebar: closePanel()");
       $panel.removeClass("cc-sidebar-panel--open").hide();
       $toggle.removeClass("cc-sidebar-toggle--active");
       document.body.classList.remove("cc-sidebar-panel-open");
     }
 
-    $toggle.on("click", function () {
+    $toggle.on("click", function (e) {
+      dbg("sidebar: toggle click", {
+        isOpen: $panel.hasClass("cc-sidebar-panel--open"),
+        target: e.target,
+      });
       if ($panel.hasClass("cc-sidebar-panel--open")) {
         closePanel();
       } else {
@@ -278,39 +327,78 @@ jQuery(function ($) {
       }
     });
 
-    $close.on("click", function () {
+    $close.on("click", function (e) {
+      dbg("sidebar: close button click", e.target);
       closePanel();
     });
 
-    // chiudi cliccando sull’overlay scuro fuori dal pannello
-    $panel.on("click", function (e) {
-      if (e.target === this) {
-        closePanel();
+    // blocca TUTTI gli eventi "primari" dentro il pannello
+    $panelInner.on("click mousedown touchstart touchend", function (e) {
+      dbg("sidebar: panelInner event", e.type, {
+        target: e.target.tagName,
+        classes: e.target.className,
+      });
+      e.stopPropagation();
+    });
+
+    // chiudi cliccando SOLO sull’overlay scuro fuori dal pannello
+    $panel.on("click mousedown touchstart touchend", function (e) {
+      var $target = jQuery(e.target);
+      dbg("sidebar: panel overlay event", e.type, {
+        target: e.target.tagName,
+        classes: e.target.className,
+      });
+
+      // se è dentro il contenuto, non chiudere
+      if ($target.closest(".cc-sidebar-panel__inner").length) {
+        dbg("sidebar: event inside panelInner, ignore");
+        return;
       }
+
+      dbg("sidebar: overlay click -> closePanel()");
+      closePanel();
+    });
+
+    // airbag extra: impedisci che l'input search chiuda il pannello su mobile
+    var $interactive = $panelInner.find("input, select, textarea, button, a");
+
+    $interactive.on("click mousedown touchstart touchend", function (e) {
+      dbg("sidebar: interactive event", e.type, {
+        tag: e.target.tagName,
+        classes: e.target.className,
+        name: e.target.name,
+      });
+      e.stopPropagation();
     });
 
     function handleResize() {
+      dbg("sidebar: handleResize()");
       if (isMobile()) {
-        // mobile: sidebar dentro pannello, chiuso di default
+        // mobile: sidebar dentro pannello, mantieni stato open/close attuale
         if (!$panelInner.find(".sidebar_inner").length) {
+          dbg("sidebar: move sidebar_inner INTO panelInner (mobile)");
           $panelInner.append($sidebarInner);
         }
+
+        dbg("sidebar: mobile layout, keep panel state", {
+          isOpen: $panel.hasClass("cc-sidebar-panel--open"),
+        });
 
         $toggle.show(); // bottone visibile
         $placeholder.show(); // placeholder mantiene la posizione logica
 
-        // assicurati che all’inizio sia CHIUSO
-        $panel.removeClass("cc-sidebar-panel--open").hide();
-        document.body.classList.remove("cc-sidebar-panel-open");
-        $toggle.removeClass("cc-sidebar-toggle--active");
+        // 🔴 IMPORTANTE: QUI NON TOCCHIAMO open/close
+        // niente $panel.hide(), niente removeClass, niente toggle.removeClass
       } else {
         // desktop: riportiamo sidebar dov’era e spegniamo tutto
+        dbg("sidebar: desktop mode, restore sidebar_inner");
         closePanel();
 
         if (
           $placeholder.parent().length &&
           !$placeholder.next().is($sidebarInner)
         ) {
+          dbg("sidebar: move sidebar_inner AFTER placeholder");
           $sidebarInner.insertAfter($placeholder);
         }
 
@@ -321,8 +409,12 @@ jQuery(function ($) {
     }
 
     // init: pannello chiuso
+    dbg("sidebar: initial handleResize()");
     handleResize();
-    jQuery(window).on("resize", handleResize);
+    jQuery(window).on("resize", function () {
+      dbg("sidebar: window resize");
+      handleResize();
+    });
   }
   //===== collapsable - floating sidebar | END ======= //
 
