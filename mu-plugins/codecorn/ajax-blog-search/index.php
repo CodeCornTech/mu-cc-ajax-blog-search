@@ -1,4 +1,4 @@
 <?php
 /**
- * Silence is golden .
+ * CodeCorn is golden .
  */
