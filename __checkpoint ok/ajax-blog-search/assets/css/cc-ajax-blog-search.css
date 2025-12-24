@@ -1,0 +1,276 @@
+/* Box risultati : nascosto finché non ha contenuto */
+.cc-ajax-search-results {
+    display: none;
+    position: absolute;
+
+    /* allineamento al content box del widget */
+    left: -2px;
+    right: -2px;
+
+    top: auto;
+    margin-top: 0;
+
+    box-sizing: border-box;
+    width: auto;
+
+    background: #111111;
+    border: 4px solid #c1a269;
+    border-radius: 12px;
+    padding: 12px 16px;
+
+    box-shadow: 0 18px 40px rgba(0,0,0,.45);
+    z-index: 50;
+}
+
+
+/* Quando ci sono contenuti , il JS aggiunge questa classe */
+.cc-ajax-search-results.cc-ajax-search-results--visible {
+    display: block;
+}
+
+/* Titolo risultati */
+.cc-ajax-search-heading {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 8px;
+    color: #f7f7f7;
+}
+
+/* Lista senza bullets */
+.cc-ajax-search-list {
+    list-style: none;
+    margin: -10px 0 0;
+    padding: 0 !important;
+}
+
+/* Spaziatura elementi */
+.cc-ajax-search-item + .cc-ajax-search-item {
+    margin-top: 8px;
+    border-top: 1px solid #c1a26973;
+    padding-bottom: 8px;
+    padding-top: 16px;
+}
+.cc-ajax-search-item a {
+    display: block;
+    text-decoration: none;
+    color: #f7f7f7;
+}
+
+/* Titolo: via margini ereditati dal tema */
+.cc-ajax-search-title {
+    display: block;
+    margin: 12px 0 0 0 !important; /* 👈 importante */
+    line-height: 1.35;
+    color: #c1a269;
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.cc-ajax-search-date {
+    display: block;
+    opacity: 0.8;
+    font-size: 12px;
+}
+
+.cc-ajax-search-excerpt {
+    display: block;
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+/* Messaggi vuoto / errore */
+.cc-ajax-search-empty,
+.cc-ajax-search-error {
+    font-size: 13px;
+    opacity: 0.9;
+    color: #f7f7f7;
+}
+
+.cc-ajax-search-item > a::before {
+    display: none !important;
+}
+
+/* ===== THUMB SECTION ==== */
+/* Item con thumb: il link diventa un blocco verticale */
+.cc-ajax-search-item--with-thumb > a {
+    display: block;
+}
+
+/* ROW: thumb + titolo affiancati */
+.cc-ajax-search-row {
+    display: flex;
+    align-items: center; /* 👈 align items center come volevi */
+    gap: 14px;
+}
+
+/* Colonna thumb + data */
+.cc-ajax-search-thumb-col {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+}
+.cc-ajax-search-thumb-col > span.cc-ajax-search-thumb {
+    margin: 16px 0 0 0; /* new */
+}
+
+/* Thumb (puoi tenere i tuoi radius / border attuali) */
+.cc-ajax-search-thumb img {
+    display: block;
+    width: 64px;
+    height: 64px;
+    object-fit: cover;
+    border-radius: 999px; /* rotondo stile avatar */
+    border: 1px solid #c1a26980;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+}
+
+/* Data sotto il thumb */
+.cc-ajax-search-date--under-thumb {
+    font-size: 11px;
+    opacity: 0.8;
+}
+
+/* Colonna titolo: centriamo verticalmente il blocco testo */
+.cc-ajax-search-body-col {
+    flex: 1;
+    min-width: 0;
+    display: flex; /* 👈 nuovo */
+    align-items: center; /* 👈 centra il titolo rispetto alla row */
+    min-height: 64px; /* ≃ altezza thumb, aggiusta se cambi size */
+    flex-wrap: wrap; /* 👈 nuovo PER MODALITA TITOLO + DESC SU STESSA COLONNA */
+}
+
+/* Excerpt full-width sotto la row */
+.cc-ajax-search-excerpt--full {
+    display: block;
+    margin-top: 10px;
+    width: 100%;
+}
+
+/* Se vuoi stringere un filo la spaziatura tra item con thumb  .cc-ajax-search-item--with-thumb + .cc-ajax-search-item--with-thumb */
+.cc-ajax-search-item--with-thumb {
+    padding-top: 14px;
+    padding-bottom: 12px;
+}
+
+
+/* ===== THUMB SECTION END ===== */
+/*===== collapsable - floating sidebar | BEGIN ======= */
+
+/* ===== Sidebar mobile overlay ===== */
+
+body.cc-sidebar-toggle-enabled .cc-sidebar-panel {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    display: none;
+    z-index: 9998;
+}
+
+body.cc-sidebar-toggle-enabled .cc-sidebar-panel__inner {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: auto;
+    max-width: 99vw;
+    background: #111111;
+    box-shadow: -18px 0 40px rgba(0, 0, 0, 0.6);
+    padding: 16px 18px;
+    overflow-y: auto;
+    border-left: 2px solid #c1a269;
+}
+
+body.cc-sidebar-toggle-enabled .cc-sidebar-panel__close {
+    background: transparent;
+    border: none;
+    color: #f7f7f7;
+    font-size: 24px;
+    line-height: 1;
+    padding: 0;
+    margin-bottom: 12px;
+    cursor: pointer;
+}
+
+/* Stato aperto */
+body.cc-sidebar-toggle-enabled .cc-sidebar-panel.cc-sidebar-panel--open {
+    display: block;
+}
+
+/* ===== Toggle button ===== */
+
+body.cc-sidebar-toggle-enabled .cc-sidebar-toggle {
+    display: none; /* di default nascosto, JS lo mostra solo su mobile */
+    border: none;
+    cursor: pointer;
+    z-index: 9999;
+
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    background: #111111;
+    color: #f7f7f7;
+    border-radius: 999px;
+    padding: 10px 18px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+    border: 1px solid #c1a269;
+}
+
+/* floating bottom-right */
+body.cc-sidebar-toggle-enabled .cc-sidebar-toggle--floating {
+    position: fixed;
+    left: 18px;
+    bottom: 18px;
+}
+
+/* fixed top (tipo barra sopra il contenuto) */
+body.cc-sidebar-toggle-enabled .cc-sidebar-toggle--top {
+    position: sticky;
+    top: 0;
+    margin: 0 auto 12px;
+    display: block;
+}
+
+/* stato attivo */
+body.cc-sidebar-toggle-enabled .cc-sidebar-toggle--active {
+    background: #c1a269;
+    color: #111111;
+}
+
+/* blocco scroll quando overlay aperto */
+body.cc-sidebar-toggle-enabled.cc-sidebar-panel-open {
+    overflow: hidden;
+}
+
+/* Mobile only (puoi cambiare 1023 se vuoi matchare il breakpoint) */
+@media (max-width: 1023px) and (min-width: 768.1px) {
+    body.cc-sidebar-toggle-enabled .cc-sidebar-panel__inner {
+        max-width: 45vw;
+    }
+}
+@media (max-width: 1023px) {
+    /* mostra il toggle solo su mobile */
+    body.cc-sidebar-toggle-enabled .cc-sidebar-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* la colonna sidebar originale non serve, tanto la spostiamo nel pannello */
+    body.cc-sidebar-toggle-enabled .sidebar.widget_area {
+        display: none;
+    }
+}
+/* Box risultati : nascosto finché non ha contenuto */
+body.cc-sidebar-toggle-enabled .cc-ajax-search-results {
+    /* margin: 8px 0 0 0; */
+    margin: 0;
+}
+/* spaziatura fra i widget */
+body.cc-sidebar-toggle-enabled .sidebar_inner aside.widget {
+    margin-bottom: 25px;
+}
+/*===== collapsable - floating sidebar | END ======= */
+/*===== collapsable - floating sidebar | END ======= */

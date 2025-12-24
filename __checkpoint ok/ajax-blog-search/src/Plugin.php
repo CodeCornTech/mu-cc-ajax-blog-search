@@ -1,0 +1,504 @@
+<?php
+/**
+ * Core del MU plugin CC Ajax Blog Search.
+ *
+ * Gestisce:
+ * - bootstrap singleton del plugin
+ * - enqueue di asset frontend
+ * - localizzazione JS
+ * - handler AJAX per la ricerca
+ *
+ * @package CodeCorn\AjaxBlogSearch
+ */
+
+namespace CodeCorn\AjaxBlogSearch;
+
+\defined('ABSPATH') || exit;
+
+use WP_Query;
+
+/**
+ * Main plugin class.
+ *
+ * Implementata come Singleton:
+ * - una sola istanza per richiesta
+ * - bootstrap tramite ::boot()
+ *
+ * @final
+ */
+final class Plugin
+{
+    /**
+     * Singleton instance.
+     *
+     * @var self|null
+     */
+    protected static ?self $instance = null;
+
+    /**
+     * Plugin version.
+     *
+     * @var string
+     */
+    protected string $version;
+
+    /**
+     * Text domain for translations.
+     *
+     * @var string
+     */
+    protected string $text_domain;
+
+    /**
+     * Script / style handle.
+     *
+     * @var string
+     */
+    protected string $handle;
+    /**
+     * Script ajax_action.
+     *
+     * @var string
+     */
+    protected string $ajax_action;
+
+    /**
+     * Absolute base directory path.
+     *
+     * @var string
+     */
+    protected string $base_dir;
+
+    /**
+     * Base URL for assets.
+     *
+     * @var string
+     */
+    protected string $base_url;
+    /**
+     * Debug Flag.
+     *
+     * @var boolean
+     */
+    protected string $debug;
+
+    /**
+     * Allowed post types.
+     *
+     * Elenco dei post type sui quali il plugin è autorizzato
+     * a operare ( ricerca AJAX , rilevamento contesto , filtri ).
+     *
+     * Usato come whitelist di sicurezza e come base
+     * per il rilevamento automatico del contesto di ricerca.
+     *
+     * @var string[]
+     */
+    private array $allowed_cpt = [
+        'post',
+        'page',
+        'product',
+        'portfolio',
+        'case_study',
+        'video',
+    ];
+    /**
+     * Taxonomy → Post Type map.
+     *
+     * Serve a risolvere correttamente il contesto
+     * quando ci troviamo su archivi di taxonomy.
+     *
+     * @var array<string, string>
+     */
+    private array $taxonomy_map = [
+        // WordPress core
+        'category' => 'post',
+        'post_tag' => 'post',
+
+        // WooCommerce
+        'product_cat' => 'product',
+        'product_tag' => 'product',
+    ];
+
+    /**
+     * Search context selectors map ( defaults ).
+     *
+     * Contiene i selettori CSS di fallback per i form di ricerca
+     * più comuni ( WordPress core / WooCommerce core ).
+     *
+     * ⚠️ Questi valori NON sono vincolanti:
+     * - possono essere estesi
+     * - possono essere sovrascritti
+     * - possono essere azzerati
+     *
+     * tramite il filtro:
+     * `cc_ajax_blog_search_selectors`
+     *
+     * @var array<string, string[]>
+     */
+    private array $search_context_map = [
+        'post' => [
+            '.search-form', // WP core search form
+        ],
+        'product' => [
+            '.search-form', // WooCommerce core         '.woocommerce-product-search',
+        ],
+
+        'portfolio' => [
+            '.search-form', // fallback generico CPT       '#portfolio-search .search-form',
+        ],
+
+        'global' => [
+            '.search-form', // fallback globale WP
+        ],
+    ];
+
+    /**
+     * Bootstrap the plugin instance.
+     *
+     * @param array{
+     *     version:string,
+     *     ajax_action:string,
+     *     text_domain:string,
+     *     handle:string,
+     *     base_dir:string,
+     *     base_url:string
+     * } $config Plugin configuration array.
+     *
+     * @return self
+     */
+    public static function boot(array $config): self
+    {
+        if (null === self::$instance) {
+            self::$instance = new self($config);
+        }
+
+        return self::$instance;
+    }
+
+    /**
+     * Plugin constructor.
+     *
+     * @param array{
+     *     version:string,
+     *     ajax_action:string,
+     *     text_domain:string,
+     *     handle:string,
+     *     base_dir:string,
+     *     base_url:string
+     *     debug:boolean
+     * } $config Plugin configuration.
+     */
+    protected function __construct(array $config)
+    {
+        $this->version = $config['version'];
+        $this->ajax_action = $config['ajax_action'];
+        $this->text_domain = $config['text_domain'];
+        $this->handle = $config['handle'];
+        $this->base_dir = rtrim($config['base_dir'], '/\\');
+        $this->base_url = rtrim($config['base_url'], '/\\');
+        $this->debug = $config['debug'];
+
+        $this->register_hooks();
+    }
+
+    /**
+     * Register WordPress hooks.
+     *
+     * @return void
+     */
+    protected function register_hooks(): void
+    {
+        add_action('wp_enqueue_scripts', [$this, 'enqueue_assets']);
+        add_action('wp_ajax_' . MU_CC_AJAX_ACTION, [$this, 'handle_ajax_search']);
+        add_action('wp_ajax_nopriv_' . MU_CC_AJAX_ACTION, [$this, 'handle_ajax_search']);
+    }
+    /**
+     * Resolve search form selectors for a given context.
+     *
+     * @param string $context Context key ( post | product | global | ecc ).
+     * @return string[] CSS selectors.
+     */
+    private function get_search_selectors(string $context): array
+    {
+        $defaults = $this->search_context_map[$context] ?? [];
+
+        /**
+         * Filters search form selectors for a given context.
+         *
+         * @param string[] $selectors Default selectors.
+         * @param string   $context   Context key.
+         */
+        $filtered = apply_filters(
+            'cc_ajax_blog_search_selectors',
+            $defaults,
+            $context
+        );
+
+        return \is_array($filtered) ? $filtered : $defaults;
+    }
+
+    /**
+     * Detect current search context.
+     *
+     * Determina dinamicamente il contesto di ricerca corrente
+     * in base allo stato della query WordPress:
+     *
+     * - globale ( default )
+     * - singolo contenuto ( is_singular )
+     * - archivio di post type ( is_post_type_archive )
+     *
+     * Il contesto restituito include:
+     * - scope        → tipo di contesto ( global | single | archive )
+     * - post_type    → post type coinvolti
+     * - selectors    → selettori CSS dei form da intercettare
+     *
+     * @return array{
+     *     scope: string,
+     *     post_type: string[],
+     *     selectors: string[]
+     * }
+     */
+    private function detect_search_context(): array
+    {
+        // default = globale
+        $context = [
+            'scope' => 'global',
+            'post_type' => $this->allowed_cpt,
+            'selectors' => $this->search_context_map['global'],
+        ];
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('[CC SEARCH][CTX] init global');
+            error_log('[CC SEARCH][CTX] allowed_cpt: ' . wp_json_encode($this->allowed_cpt));
+        }
+
+        // taxonomy archive ( category / tag / product_cat / ecc ) CPT
+        if (is_tax() || is_category() || is_tag()) {
+
+            $tax = get_queried_object();
+
+            if ($tax && !is_wp_error($tax)) {
+
+                $pt = $this->taxonomy_map[$tax->taxonomy] ?? null;
+
+                // estendibile via filter
+                $pt = apply_filters(
+                    'cc_ajax_blog_search_taxonomy_post_type',
+                    $pt,
+                    $tax
+                );
+
+                if ($pt && \in_array($pt, $this->allowed_cpt, true)) {
+
+                    $context['scope'] = 'archive';
+                    $context['post_type'] = [$pt];
+                    $context['selectors'] = $this->get_search_selectors($pt);
+
+                    if (\defined('WP_DEBUG') && WP_DEBUG) {
+                        error_log('[CC SEARCH][CTX] taxonomy detected: ' . $tax->taxonomy);
+                        error_log('[CC SEARCH][CTX] resolved CPT: ' . $pt);
+                    }
+
+                    return $context; // 🔥 STOP QUI
+                }
+            }
+        }
+
+        // singolo CPT
+        if (is_singular()) {
+            $pt = get_post_type();
+
+            if (\defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('[CC SEARCH][CTX] is_singular detected');
+                error_log('[CC SEARCH][CTX] post_type: ' . var_export($pt, true));
+            }
+
+            if (\in_array($pt, $this->allowed_cpt, true)) {
+                $context['scope'] = 'single';
+                $context['post_type'] = [$pt];
+                $context['selectors'] = $this->get_search_selectors($pt);
+
+                if (defined('WP_DEBUG') && WP_DEBUG) {
+                    error_log('[CC SEARCH][CTX] single CPT matched');
+                }
+            }
+        }
+
+        // archivio CPT
+        if (is_post_type_archive()) {
+            $pt = get_query_var('post_type');
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('[CC SEARCH][CTX] is_post_type_archive detected');
+                error_log('[CC SEARCH][CTX] query_var post_type: ' . var_export($pt, true));
+            }
+            if (\is_string($pt) && \in_array($pt, $this->allowed_cpt, true)) {
+                $context['scope'] = 'archive';
+                $context['post_type'] = [$pt];
+                $context['selectors'] = $this->get_search_selectors($pt);
+
+                if (defined('WP_DEBUG') && WP_DEBUG) {
+                    error_log('[CC SEARCH][CTX] archive CPT matched');
+                }
+            }
+        }
+
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            if (is_product_category()) {
+                $pt = get_post_type();
+                error_log('[CC SEARCH][CTX] final is_product_category(): Si true - POST_TYPE: ' . $pt);
+            }
+            error_log('[CC SEARCH][CTX] final context: ' . wp_json_encode($context));
+        }
+
+        return $context;
+    }
+
+    /**
+     * Enqueue frontend assets and localize configuration.
+     *
+     * - Script JS principale
+     * - CSS opzionale se presente
+     * - Oggetto JS con config e testi localizzati
+     *
+     * @return void
+     */
+    public function enqueue_assets()
+    {
+
+        if (is_admin()) {
+            return;
+        }
+
+        $script_url = "{$this->base_url}/assets/js/cc-ajax-blog-search.js";
+
+        wp_enqueue_script(
+            $this->handle,
+            $script_url,
+            ['jquery', 'cc-logger-core-pre'],
+            $this->version,
+            true
+        );
+
+        $style_path = "{$this->base_dir}/assets/css/cc-ajax-blog-search.css";
+
+        if (file_exists($style_path)) {
+
+            $style_url = "{$this->base_url}/assets/css/cc-ajax-blog-search.css";
+
+            wp_enqueue_style(
+                $this->handle,
+                $style_url,
+                [],
+                $this->version
+            );
+        }
+
+        /**
+         * Debug flag.
+         *
+         * Ordine di precedenza:
+         * 1. costante MU_CC_ABS_DEBUG
+         * 2. filtro cc_ajax_blog_search_debug
+         */
+        $debug = \defined('MU_CC_ABS_DEBUG') ? (bool) MU_CC_ABS_DEBUG : false;
+        $debug = (bool) apply_filters('cc_ajax_blog_search_debug', $debug);
+
+        // Determina il contesto di ricerca
+        $context = $this->detect_search_context();
+
+        wp_localize_script(
+            $this->handle,
+            'CC_Ajax_Blog_Search',
+            [
+                'ajax_url' => admin_url('admin-ajax.php'),
+                'action' => $this->ajax_action,
+                'nonce' => wp_create_nonce($this->ajax_action),
+                'no_results_text' => __('Nessun articolo trovato.', 'cc-ajax-blog-search'),
+                'error_text' => __('Si è verificato un errore , riprova più tardi.', 'cc-ajax-blog-search'),
+                'show_thumb' => (bool) apply_filters('cc_ajax_blog_search_show_thumbnail', false),
+                // 🔍 DEBUG
+                'debug' => $debug,
+                // CONTESTO
+                'context' => $context,
+                'ui' => [
+                    'sidebar_container_selector' => apply_filters(
+                        'cc_ajax_blog_search_sidebar_container_selector',
+                        null // null = disabilitato
+                    ),
+                ],
+                // ⚙️ Config sidebar mobile toggle
+                'sidebar_toggle' => [
+                    // di default disattivato, lo accendi via filter
+                    'enabled' => (bool) apply_filters('cc_ajax_blog_search_sidebar_toggle_enabled', false),
+                    // 'floating' | 'top'
+                    'mode' => apply_filters('cc_ajax_blog_search_sidebar_toggle_mode', 'floating'),
+                    // breakpoint mobile (px)
+                    'breakpoint' => (int) apply_filters('cc_ajax_blog_search_sidebar_toggle_breakpoint', 992),
+                    // label nel bottone
+                    'label' => apply_filters('cc_ajax_blog_search_sidebar_toggle_label', __('Filtri & ricerca', 'cc-ajax-blog-search')),
+                ],
+            ]
+        );
+    }
+
+    /**
+     * AJAX handler for blog search.
+     *
+     * Validates nonce, performs WP_Query and
+     * returns a normalized JSON response.
+     *
+     * @return void
+     */
+    public function handle_ajax_search(): void
+    {
+        //error_log('[CC-AJAX] REQUEST: ' . print_r($_REQUEST, true));
+
+        check_ajax_referer($this->ajax_action, 'nonce');
+
+        $term = isset($_REQUEST['s'])
+            ? sanitize_text_field(wp_unslash($_REQUEST['s']))
+            : '';
+
+        if ($term === '') {
+            wp_send_json_success(['results' => []]);
+        }
+
+        $post_types = $_GET['post_type'] ?? [];
+        $scope = sanitize_text_field($_GET['scope'] ?? 'global');
+
+        $query = new WP_Query([
+            's' => $term,
+            'post_type' => $scope === 'global' ? 'any' : $post_types,
+            'posts_per_page' => 5,
+            'post_status' => 'publish',
+            'ignore_sticky_posts' => true,
+        ]);
+
+        $results = [];
+        $show_thumb = (bool) apply_filters('cc_ajax_blog_search_show_thumbnail', false);
+        $thumb_size = apply_filters('cc_ajax_blog_search_thumbnail_size', 'thumbnail');
+
+        while ($query->have_posts()) {
+            $query->the_post();
+
+            $thumb = '';
+            if ($show_thumb) {
+                $url = get_the_post_thumbnail_url(get_the_ID(), $thumb_size);
+                $thumb = $url ? esc_url($url) : '';
+            }
+
+            $results[] = [
+                'title' => get_the_title(),
+                'url' => get_permalink(),
+                'date' => get_the_date(),
+                'excerpt' => wp_trim_words(get_the_excerpt(), 18, '…'),
+                'thumb' => $thumb,
+            ];
+        }
+
+        wp_reset_postdata();
+
+        wp_send_json_success(['results' => $results]);
+        // error_log('[CC-AJAX] RESULTS COUNT: ' . count($results));
+
+    }
+}

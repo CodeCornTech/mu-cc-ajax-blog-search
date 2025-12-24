@@ -11,7 +11,7 @@
  * License:     GPL-2.0-or-later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: cc-ajax-blog-search
- * Domain Path: /languages
+ * Domain Path: /codecorn/ajax-blog-search/languages
  *
  * @package CodeCorn\AjaxBlogSearch
  */
@@ -23,6 +23,7 @@ defined('ABSPATH') || exit;
  * Global constants
  * ------------------------------------------------------------
  */
+defined('MU_CC_ABS_DEBUG') || define('MU_CC_ABS_DEBUG', true);
 defined('MU_CC_ABS_VERSION') || define('MU_CC_ABS_VERSION', '1.0.15');
 defined('MU_CC_ABS_TEXT_DOMAIN') || define('MU_CC_ABS_TEXT_DOMAIN', 'cc-ajax-blog-search');
 defined('MU_CC_ABS_HANDLE') || define('MU_CC_ABS_HANDLE', MU_CC_ABS_TEXT_DOMAIN);
@@ -40,12 +41,24 @@ defined('MU_CC_ABS_LANG_REL_PATH') || define('MU_CC_ABS_LANG_REL_PATH', MU_CC_AB
  * Load translations ( MU plugin safe )
  * ------------------------------------------------------------
  */
-add_action('init', static function () {
+add_action('plugins_loaded', function () {
+
     load_muplugin_textdomain(
         MU_CC_ABS_TEXT_DOMAIN,
         MU_CC_ABS_LANG_REL_PATH
     );
-});
+
+
+    // // 🧪 Test di verifica rapida ( se vuoi )
+    // // Aggiungi temporaneamente:
+    // $test = __('Filtri & ricerca', MU_CC_ABS_TEXT_DOMAIN);
+    // if ($test !== 'Filtri & ricerca') {
+    //     error_log("'Filtri & ricerca' => $test - ✅ textdomain FUNZIONANTE");
+    // } else {
+    //     error_log("'Filtri & ricerca' => $test - ❌ traduzione NON risolta");
+    // }
+
+}, 0);
 
 /**
  * ------------------------------------------------------------
@@ -61,6 +74,7 @@ CodeCorn\AjaxBlogSearch\Plugin::boot(
         'handle' => MU_CC_ABS_HANDLE,
         'base_dir' => MU_CC_ABS_BASE_DIR,
         'base_url' => MU_CC_ABS_BASE_URL,
+        'debug' => MU_CC_ABS_DEBUG
     ]
 );
 /**
@@ -71,17 +85,12 @@ CodeCorn\AjaxBlogSearch\Plugin::boot(
  * ------------------------------------------------------------
  */
 add_filter('cc_ajax_blog_search_show_thumbnail', '__return_true');
-add_filter('cc_ajax_blog_search_sidebar_toggle_enabled', '__return_true');
 add_filter('cc_ajax_blog_search_sidebar_toggle_mode', fn() => 'floating'); // oppure 'top'
 add_filter('cc_ajax_blog_search_debug', '__return_true'); # o commenta per disabilitare
 
+#add_filter('cc_ajax_blog_search_sidebar_toggle_enabled', '__return_true');
+add_filter('cc_ajax_blog_search_sidebar_toggle_enabled', fn($enabled) => is_post_type_archive('product'));
 
-// 🧪 Test di verifica rapida ( se vuoi )
-// Aggiungi temporaneamente:
-add_action('init', function () {
-    if (is_textdomain_loaded('cc-ajax-blog-search')) {
-        error_log('✅ cc-ajax-blog-search textdomain LOADED');
-    } else {
-        error_log('❌ cc-ajax-blog-search textdomain NOT loaded');
-    }
-}, 999);
+
+
+

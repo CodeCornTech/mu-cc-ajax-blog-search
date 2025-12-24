@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<bundle name="MU CC Ajax Blog Search">
+  <domain name="cc-ajax-blog-search">
+    <project name="MU CC Ajax Blog Search" slug="cc-ajax-blog-search">
+      <source>
+        <file>mu-cc-ajax-blog-search.php</file>
+      </source>
+      <target>
+        <directory>codecorn/ajax-blog-search/languages</directory>
+      </target>
+      <template>
+        <file>codecorn/ajax-blog-search/languages/cc-ajax-blog-search.pot</file>
+      </template>
+    </project>
+  </domain>
+</bundle>

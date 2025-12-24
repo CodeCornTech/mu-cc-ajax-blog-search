@@ -69,6 +69,12 @@ final class Plugin
      * @var string
      */
     protected string $base_url;
+    /**
+     * Debug Flag.
+     *
+     * @var boolean
+     */
+    protected string $debug;
 
     /**
      * Allowed post types.
@@ -91,32 +97,36 @@ final class Plugin
     ];
 
     /**
-     * Search context selectors map.
+     * Search context selectors map ( defaults ).
      *
-     * Mappa che associa un contesto ( CPT o globale )
-     * ai selettori CSS dei form di ricerca da intercettare.
+     * Contiene i selettori CSS di fallback per i form di ricerca
+     * più comuni ( WordPress core / WooCommerce core ).
      *
-     * La chiave rappresenta:
-     * - uno specifico post type
-     * - oppure il contesto "global" come fallback
+     * ⚠️ Questi valori NON sono vincolanti:
+     * - possono essere estesi
+     * - possono essere sovrascritti
+     * - possono essere azzerati
      *
-     * I selettori vengono passati al frontend per
-     * collegare la ricerca AJAX ai form esistenti.
+     * tramite il filtro:
+     * `cc_ajax_blog_search_selectors`
      *
      * @var array<string, string[]>
      */
     private array $search_context_map = [
         'post' => [
-            '#horseno_search_widget-1.search-form', // @todo rimuovere hardcode tema
+            '.search-form', // WP core search form
         ],
+
         'product' => [
-            '.woocommerce-product-search',
+            '.search-form', // WooCommerce core         '.woocommerce-product-search',
         ],
+
         'portfolio' => [
-            '#portfolio-search .search-form',
+            '.search-form', // fallback generico CPT       '#portfolio-search .search-form',
         ],
+
         'global' => [
-            '.search-form', // fallback globale
+            '.search-form', // fallback globale WP
         ],
     ];
 
@@ -151,6 +161,7 @@ final class Plugin
      *     handle:string,
      *     base_dir:string,
      *     base_url:string
+     *     debug:boolean
      * } $config Plugin configuration.
      */
     protected function __construct(array $config)
@@ -160,6 +171,7 @@ final class Plugin
         $this->handle = $config['handle'];
         $this->base_dir = rtrim($config['base_dir'], '/\\');
         $this->base_url = rtrim($config['base_url'], '/\\');
+        $this->debug = $config['debug'];
 
         $this->register_hooks();
     }
@@ -174,6 +186,30 @@ final class Plugin
         add_action('wp_enqueue_scripts', [$this, 'enqueue_assets']);
         add_action('wp_ajax_cc_ajax_blog_search', [$this, 'handle_ajax_search']);
         add_action('wp_ajax_nopriv_cc_ajax_blog_search', [$this, 'handle_ajax_search']);
+    }
+    /**
+     * Resolve search form selectors for a given context.
+     *
+     * @param string $context Context key ( post | product | global | ecc ).
+     * @return string[] CSS selectors.
+     */
+    private function get_search_selectors(string $context): array
+    {
+        $defaults = $this->search_context_map[$context] ?? [];
+
+        /**
+         * Filters search form selectors for a given context.
+         *
+         * @param string[] $selectors Default selectors.
+         * @param string   $context   Context key.
+         */
+        $filtered = apply_filters(
+            'cc_ajax_blog_search_selectors',
+            $defaults,
+            $context
+        );
+
+        return \is_array($filtered) ? $filtered : $defaults;
     }
 
     /**
@@ -212,7 +248,7 @@ final class Plugin
             if (\in_array($pt, $this->allowed_cpt, true)) {
                 $context['scope'] = 'single';
                 $context['post_type'] = [$pt];
-                $context['selectors'] = $this->search_context_map[$pt] ?? [];
+                $context['selectors'] = $this->get_search_selectors($pt);
             }
         }
 
@@ -222,7 +258,7 @@ final class Plugin
             if (\is_string($pt) && \in_array($pt, $this->allowed_cpt, true)) {
                 $context['scope'] = 'archive';
                 $context['post_type'] = [$pt];
-                $context['selectors'] = $this->search_context_map[$pt] ?? [];
+                $context['selectors'] = $this->get_search_selectors($pt);
             }
         }
 
@@ -273,10 +309,10 @@ final class Plugin
          * Debug flag.
          *
          * Ordine di precedenza:
-         * 1. costante CC_AJAX_BLOG_SEARCH_DEBUG
+         * 1. costante MU_CC_ABS_DEBUG
          * 2. filtro cc_ajax_blog_search_debug
          */
-        $debug = \defined('CC_AJAX_BLOG_SEARCH_DEBUG') ? (bool) CC_AJAX_BLOG_SEARCH_DEBUG : false;
+        $debug = \defined('MU_CC_ABS_DEBUG') ? (bool) MU_CC_ABS_DEBUG : false;
         $debug = (bool) apply_filters('cc_ajax_blog_search_debug', $debug);
 
         // Determina il contesto di ricerca
@@ -296,6 +332,12 @@ final class Plugin
                 'debug' => $debug,
                 // CONTESTO
                 'context' => $context,
+                'ui' => [
+                    'sidebar_container_selector' => apply_filters(
+                        'cc_ajax_blog_search_sidebar_container_selector',
+                        null // null = disabilitato
+                    ),
+                ],
                 // ⚙️ Config sidebar mobile toggle
                 'sidebar_toggle' => [
                     // di default disattivato, lo accendi via filter
@@ -321,6 +363,8 @@ final class Plugin
      */
     public function handle_ajax_search(): void
     {
+        error_log('[CC-AJAX] REQUEST: ' . print_r($_REQUEST, true));
+
         check_ajax_referer('cc_ajax_blog_search', 'nonce');
 
         $term = isset($_REQUEST['s'])
@@ -367,5 +411,7 @@ final class Plugin
         wp_reset_postdata();
 
         wp_send_json_success(['results' => $results]);
+        error_log('[CC-AJAX] RESULTS COUNT: ' . count($results));
+
     }
 }

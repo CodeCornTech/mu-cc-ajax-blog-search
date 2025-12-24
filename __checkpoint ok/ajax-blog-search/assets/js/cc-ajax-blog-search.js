@@ -2,10 +2,34 @@
 /* CC Ajax Blog Search
  * Aggancia i widget .widget_search e mostra i risultati in un dropdown sotto il campo
  */
+// ============================================================
+// CC LOGGER ADAPTER (STANDARD COMPLIANT)
+// ============================================================
+// const CC_LOG = (function (w) {
+//     if (!w.CC_LC) {
+//         throw new Error('CC_LC logger core is missing. This is a structural error.');
+//     }
+
+//     return {
+//         dbg: w.CC_LC.log,
+//         info: w.CC_LC.info,
+//         warn: w.CC_LC.warn,
+//         err: w.CC_LC.error,
+//         trace: w.CC_LC.trace,
+//         group: w.CC_LC.group,
+//         groupEnd: w.CC_LC.groupEnd,
+//         time: w.CC_LC.time,
+//         timeEnd: w.CC_LC.timeEnd,
+//         dump: w.CC_LC.dump,
+//     };
+// })(window);
 jQuery(function ($) {
-    // ===== DEBUG LAYER =====
+    // ============================================================
+    // DEBUG + LOGGER ADAPTER ( PERMISSIVE / NO-THROW )
+    // ============================================================
+
     var AJX_CLP_DBG = (function () {
-        // 1️⃣ override manuale
+        // 1️⃣ override manuale (debug forzato da console)
         if (typeof window.AJX_CLP_DB !== 'undefined') {
             return !!window.AJX_CLP_DB;
         }
@@ -19,7 +43,40 @@ jQuery(function ($) {
         return false;
     })();
 
+    /**
+     * dbg() — adapter intelligente
+     *
+     * - usa CC_LC se disponibile
+     * - fallback su console.log
+     * - mai throw
+     * - mai rompe il flusso
+     */
     function dbg() {
+        if (!AJX_CLP_DBG) return;
+
+        var args = Array.prototype.slice.call(arguments);
+
+        // CTX default se non passato
+        if (typeof args[0] !== 'string' || args[0].charAt(0) !== '[') {
+            args.unshift('[AJX-SIDEBAR]');
+        }
+
+        // 🟢 LOGGER CORE disponibile
+        if (window.CC_LC && typeof window.CC_LC.log === 'function') {
+            try {
+                window.CC_LC.log.apply(window.CC_LC, args);
+                return;
+            } catch (_) {
+                // silenzioso
+            }
+        }
+
+        // 🟡 FALLBACK console (safe)
+        try {
+            console.log.apply(console, args);
+        } catch (_) {}
+    }
+    function dbgBK() {
         if (!AJX_CLP_DBG) return;
         var args = Array.prototype.slice.call(arguments);
         args.unshift('[AJX-SIDEBAR]');
@@ -43,6 +100,8 @@ jQuery(function ($) {
         dbg('initAjaxSearch: start');
         var selectors = (CC_Ajax_Blog_Search.context && CC_Ajax_Blog_Search.context.selectors) || ['.search-form'];
 
+        dbg('initAjaxSearch: context', CC_Ajax_Blog_Search.context);
+
         $(selectors.join(',')).each(function () {
             var $form = $(this);
 
@@ -52,7 +111,7 @@ jQuery(function ($) {
             }
             $form.data('ccAjaxSearchInited', true);
 
-            var $input = $form.find('input.search-field');
+            var $input = $form.find("input[name='s']");
             if (!$input.length) {
                 dbg('initAjaxSearch: no search-field found in form', $form.get(0));
                 return;
@@ -119,9 +178,6 @@ jQuery(function ($) {
                         // Colonna titolo (solo testo)
                         html += '<span class="cc-ajax-search-body-col">';
                         html += '<span class="cc-ajax-search-title">' + item.title + '</span>';
-                        html += '</span>'; // .cc-ajax-search-body-col
-
-                        html += '</span>'; // .cc-ajax-search-row
 
                         // Excerpt a 100% sotto la row
                         if (item.excerpt) {
@@ -129,6 +185,9 @@ jQuery(function ($) {
                             html += item.excerpt;
                             html += '</span>';
                         }
+                        html += '</span>'; // .cc-ajax-search-body-col
+
+                        html += '</span>'; // .cc-ajax-search-row
                     } else {
                         // Fallback senza thumb: layout semplice verticale
                         html += '<span class="cc-ajax-search-title">' + item.title + '</span>';
@@ -158,8 +217,14 @@ jQuery(function ($) {
 
             var doSearch = debounce(function () {
                 var term = $input.val().trim();
-                dbg('search: doSearch', { term: term });
-
+                dbg('search: doSearch => AJAX REQUEST payload', {
+                    url: CC_Ajax_Blog_Search.ajax_url,
+                    action: CC_Ajax_Blog_Search.action || 'cc_ajax_blog_search',
+                    nonce: CC_Ajax_Blog_Search.nonce,
+                    term: term,
+                    post_type: CC_Ajax_Blog_Search.context?.post_type,
+                    scope: CC_Ajax_Blog_Search.context?.scope,
+                });
                 // Se campo vuoto → nascondi box
                 if (!term) {
                     hideBox();
@@ -181,13 +246,20 @@ jQuery(function ($) {
                     .done(function (resp) {
                         dbg('search: AJAX done', resp);
                         if (resp && resp.success && resp.data) {
+                            dbg('search: AJAX RESPONSE results', resp.data.results);
                             renderResults(resp.data.results || [], term);
                         } else {
+                            dbg('search: AJAX RESPONSE malformed', resp);
                             renderError();
                         }
                     })
-                    .fail(function (jqXHR, textStatus) {
-                        dbg('search: AJAX fail', textStatus, jqXHR.status);
+                    .fail(function (jqXHR, textStatus, errorThrown) {
+                        dbg('search: AJAX FAIL', {
+                            status: jqXHR.status,
+                            textStatus: textStatus,
+                            error: errorThrown,
+                            responseText: jqXHR.responseText,
+                        });
                         renderError();
                     });
             }, 300);
@@ -211,7 +283,7 @@ jQuery(function ($) {
             // On blur puoi eventualmente chiudere il dropdown dopo un attimo ( opzionale )
             $input.on('blur', function () {
                 dbg('search: blur input');
-                setTimeout(hideBox, 200);
+                // TODO DECOMMENT DEBUG setTimeout(hideBox, 200);
             });
 
             dbg('initAjaxSearch: form inited', $form.get(0));
@@ -236,12 +308,22 @@ jQuery(function ($) {
 
         var $ = jQuery;
 
-        var $sidebarInner = $('.sidebar.widget_area .sidebar_inner').first();
-        if (!$sidebarInner.length) {
-            dbg('sidebar: no .sidebar_inner found, abort');
+        var ui = CC_Ajax_Blog_Search.ui || {};
+        var sidebarSelector = ui.sidebar_container_selector;
+
+        if (!sidebarSelector) {
+            dbg('sidebar: no sidebar_container_selector provided, abort');
             return;
         }
 
+        var $sidebarContainer = $(sidebarSelector).first();
+        if (!$sidebarContainer.length) {
+            dbg('sidebar: sidebar_container not found:', sidebarSelector);
+            return;
+        }
+
+        // alias legacy ( backward compatibility interna )
+        var $sidebarInner = $sidebarContainer;
         // feature davvero attivo
         document.body.classList.add('cc-sidebar-toggle-enabled');
         dbg('sidebar: cc-sidebar-toggle-enabled added to body');
