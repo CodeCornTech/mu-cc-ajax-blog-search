@@ -1,4 +1,8 @@
-// @ts-nocheck
+from pathlib import Path
+
+output = Path("./cc-ajax-blog-search-search.js")
+
+content = r"""// @ts-nocheck
 /**
  * CC Ajax Blog Search — SEARCH
  *
@@ -876,3 +880,9 @@
         diag('log', 'MutationObserver active');
     });
 })(window, jQuery);
+"""
+
+output.write_text(content, encoding="utf-8")
+
+print(f"Creato: {output}")
+print(f"Righe: {len(content.splitlines())}")

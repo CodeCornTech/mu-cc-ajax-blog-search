@@ -299,8 +299,8 @@ final class Plugin
     protected function register_hooks(): void
     {
         add_action('wp_enqueue_scripts', [$this, 'enqueue_assets']);
-        add_action('wp_ajax_' . MU_CC_AJAX_ACTION, [$this, 'handle_ajax_search']);
-        add_action('wp_ajax_nopriv_' . MU_CC_AJAX_ACTION, [$this, 'handle_ajax_search']);
+        add_action('wp_ajax_' . $this->ajax_action, [$this, 'handle_ajax_search']);
+        add_action('wp_ajax_nopriv_' . $this->ajax_action, [$this, 'handle_ajax_search']);
     }
 
     /**
@@ -662,6 +662,14 @@ final class Plugin
         }
         // 🔹 registra SOLO ora
         $this->register_assets();
+
+        if ($this->can_debug()) {
+            error_log('[CC ABS][ENQUEUE] begin | uri=' . (isset($_SERVER['REQUEST_URI']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_URI'])) : 'n/a'));
+            error_log('[CC ABS][ENQUEUE] base_dir=' . $this->base_dir . ' | base_url=' . $this->base_url);
+            error_log('[CC ABS][ENQUEUE] pre=' . (file_exists($this->base_dir . '/assets/js/' . $this->text_domain . '-pre.js') ? '1' : '0') .
+                ' | search=' . (file_exists($this->base_dir . '/assets/js/' . $this->text_domain . '-search.js') ? '1' : '0') .
+                ' | sidebar=' . (file_exists($this->base_dir . '/assets/js/' . $this->text_domain . '-sidebar.js') ? '1' : '0'));
+        }
         wp_enqueue_script("{$this->handle}-pre");
         wp_enqueue_script("{$this->handle}-search");
         wp_enqueue_script("{$this->handle}-sidebar");
@@ -680,8 +688,20 @@ final class Plugin
         // Determina il contesto di ricerca
         $context = $this->detect_search_context();
 
+        // La configurazione serve già al PRE: deve essere stampata PRIMA del PRE,
+        // non soltanto prima del modulo SEARCH.
+        if ($this->can_debug()) {
+            error_log('[CC ABS][LOCALIZE] ' . wp_json_encode([
+                'handle' => "{$this->handle}-pre",
+                'debug' => $this->js_debug,
+                'context' => $context,
+                'ajax_url' => admin_url('admin-ajax.php'),
+                'action' => $this->ajax_action,
+            ]));
+        }
+
         wp_localize_script(
-            "{$this->handle}-search",
+            "{$this->handle}-pre",
             'CC_Ajax_Blog_Search',
             [
                 'ajax_url' => admin_url('admin-ajax.php'),
@@ -725,8 +745,23 @@ final class Plugin
      */
     public function handle_ajax_search(): void
     {
-        //error_log('[CC-AJAX] REQUEST: ' . print_r($_REQUEST, true));
-        check_ajax_referer($this->ajax_action, 'nonce');
+        if ($this->can_debug()) {
+            error_log('[CC ABS][AJAX] request=' . wp_json_encode([
+                'action' => isset($_REQUEST['action']) ? sanitize_text_field(wp_unslash($_REQUEST['action'])) : '',
+                's' => isset($_REQUEST['s']) ? sanitize_text_field(wp_unslash($_REQUEST['s'])) : '',
+                'scope' => isset($_REQUEST['scope']) ? sanitize_text_field(wp_unslash($_REQUEST['scope'])) : '',
+                'post_type' => $_REQUEST['post_type'] ?? [],
+                'logged_in' => is_user_logged_in(),
+            ]));
+        }
+
+        $nonce_ok = check_ajax_referer($this->ajax_action, 'nonce', false);
+        if (!$nonce_ok) {
+            if ($this->can_debug()) {
+                error_log('[CC ABS][AJAX][ERROR] nonce invalid');
+            }
+            wp_send_json_error(['code' => 'invalid_nonce'], 403);
+        }
 
         $term = isset($_REQUEST['s'])
             ? sanitize_text_field(wp_unslash($_REQUEST['s']))
@@ -782,6 +817,10 @@ final class Plugin
             $term
         );
 
+        if ($this->can_debug()) {
+            error_log('[CC ABS][AJAX] query_args=' . wp_json_encode($args));
+        }
+
         $query = new WP_Query($args);
 
         $results = [];
@@ -807,7 +846,9 @@ final class Plugin
             ];
         }
 
-        // error_log('[CC-AJAX] RESULTS COUNT: ' . count($results));
+        if ($this->can_debug()) {
+            error_log('[CC ABS][AJAX] results=' . count($results) . ' | total=' . $total);
+        }
         wp_reset_postdata();
 
         wp_send_json_success([
