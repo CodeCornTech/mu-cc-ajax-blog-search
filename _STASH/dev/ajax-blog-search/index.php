@@ -1,4 +1,0 @@
-<?php
-/**
- * CodeCorn is golden .
- */
