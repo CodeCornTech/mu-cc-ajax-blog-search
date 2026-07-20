@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Core del MU plugin CC Ajax Blog Search.
  *
@@ -401,7 +402,6 @@ final class Plugin
         return array_values(
             array_unique(array_merge($selectors, $filtered))
         );
-
     }
 
     /**
@@ -484,14 +484,14 @@ final class Plugin
 
             error_log(
                 '[CC SEARCH][CTX][DEBUG] ' .
-                'post_type=' . var_export($pt_dbg, true) . ' | ' .
-                'is_singular=' . (is_singular() ? '1' : '0') . ' | ' .
-                'is_home=' . (is_home() ? '1' : '0') . ' | ' .
-                'is_front_page=' . (is_front_page() ? '1' : '0') . ' | ' .
-                'is_tax=' . (is_tax() ? '1' : '0') . ' | ' .
-                'is_category=' . (is_category() ? '1' : '0') . ' | ' .
-                'is_tag=' . (is_tag() ? '1' : '0') . ' | ' .
-                'is_post_type_archive=' . (is_post_type_archive() ? '1' : '0')
+                    'post_type=' . var_export($pt_dbg, true) . ' | ' .
+                    'is_singular=' . (is_singular() ? '1' : '0') . ' | ' .
+                    'is_home=' . (is_home() ? '1' : '0') . ' | ' .
+                    'is_front_page=' . (is_front_page() ? '1' : '0') . ' | ' .
+                    'is_tax=' . (is_tax() ? '1' : '0') . ' | ' .
+                    'is_category=' . (is_category() ? '1' : '0') . ' | ' .
+                    'is_tag=' . (is_tag() ? '1' : '0') . ' | ' .
+                    'is_post_type_archive=' . (is_post_type_archive() ? '1' : '0')
             );
 
             if (empty($context['post_type'])) {
@@ -589,11 +589,11 @@ final class Plugin
             if ($this->can_debug()) {
                 error_log(
                     '[CC SEARCH][CTX] home/front detected | ' .
-                    'is_home=' . (is_home() ? '1' : '0') . ' | ' .
-                    'is_front_page=' . (is_front_page() ? '1' : '0') . ' | ' .
-                    'scope=' . $scope . ' | ' .
-                    'post_type=' . wp_json_encode($pts) .
-                    'selectors=' . wp_json_encode($this->get_search_selectors($pts, $scope))
+                        'is_home=' . (is_home() ? '1' : '0') . ' | ' .
+                        'is_front_page=' . (is_front_page() ? '1' : '0') . ' | ' .
+                        'scope=' . $scope . ' | ' .
+                        'post_type=' . wp_json_encode($pts) .
+                        'selectors=' . wp_json_encode($this->get_search_selectors($pts, $scope))
                 );
             }
 
@@ -677,7 +677,7 @@ final class Plugin
         if (file_exists("{$this->base_dir}/assets/css/cc-ajax-blog-search.css")) {
             wp_enqueue_style($this->handle);
         }
-        
+
         // 🔹 localizza DOPO register + enqueue
         $this->localize_config(); // JSON UNICO
     }
@@ -687,14 +687,26 @@ final class Plugin
 
         // Determina il contesto di ricerca
         $context = $this->detect_search_context();
+        // Profilo di ricerca per form
+        $profiles = apply_filters(
+            'cc_ajax_blog_search_profiles',
+            [],
+            $context
+        );
 
+        if (!\is_array($profiles)) {
+            $profiles = [];
+        }
         // La configurazione serve già al PRE: deve essere stampata PRIMA del PRE,
         // non soltanto prima del modulo SEARCH.
         if ($this->can_debug()) {
             error_log('[CC ABS][LOCALIZE] ' . wp_json_encode([
                 'handle' => "{$this->handle}-pre",
                 'debug' => $this->js_debug,
+                // CONTESTO LEGACY
                 'context' => $context,
+                // PROFILI INDIPENDENTI PER FORM
+                'profiles' => $profiles,
                 'ajax_url' => admin_url('admin-ajax.php'),
                 'action' => $this->ajax_action,
             ]));
@@ -709,11 +721,17 @@ final class Plugin
                 'nonce' => wp_create_nonce($this->ajax_action),
                 'no_results_text' => __('Nessun articolo trovato.', 'cc-ajax-blog-search'),
                 'error_text' => __('Si è verificato un errore , riprova più tardi.', 'cc-ajax-blog-search'),
-                'show_thumb' => (bool) apply_filters('cc_ajax_blog_search_show_thumbnail', false),
+                'show_thumb' => (bool) apply_filters(
+                    'cc_ajax_blog_search_show_thumbnail',
+                    false,
+                    $context
+                ),
                 // 🔍 DEBUG
                 'debug' => $this->js_debug,
-                // CONTESTO
+                // CONTESTO LEGACY
                 'context' => $context,
+                // PROFILI INDIPENDENTI PER FORM
+                'profiles' => $profiles,
                 'ui' => [
                     'sidebar_container_selector' => apply_filters(
                         'cc_ajax_blog_search_sidebar_container_selector', # @todo va mappato anche se filtrato
@@ -775,13 +793,24 @@ final class Plugin
         }
 
         $post_types = $_REQUEST['post_type'] ?? [];
-        $scope = sanitize_text_field($_REQUEST['scope'] ?? 'global');
+        $raw_scope = $_REQUEST['scope'] ?? 'global';
+
+        $scope = is_string($raw_scope)
+            ? sanitize_key(wp_unslash($raw_scope))
+            : 'global';
+
+        $raw_profile = $_REQUEST['cc_abs_profile'] ?? '';
+
+        $profile = is_string($raw_profile)
+            ? sanitize_key(wp_unslash($raw_profile))
+            : '';
 
         /**
          * Ricostruiamo un contesto minimo lato AJAX
          * ( NON rifacciamo detect_search_context )
          */
         $context = [
+            'profile' => $profile,
             'scope' => $scope,
             'post_type' => $this->normalize_post_types($post_types),
         ];
@@ -825,8 +854,17 @@ final class Plugin
 
         $results = [];
         $total = (int) $query->found_posts;
-        $show_thumb = (bool) apply_filters('cc_ajax_blog_search_show_thumbnail', false);
-        $thumb_size = apply_filters('cc_ajax_blog_search_thumbnail_size', 'thumbnail');
+        $show_thumb = (bool) apply_filters(
+            'cc_ajax_blog_search_show_thumbnail',
+            false,
+            $context
+        );
+
+        $thumb_size = apply_filters(
+            'cc_ajax_blog_search_thumbnail_size',
+            'thumbnail',
+            $context
+        );
 
         while ($query->have_posts()) {
             $query->the_post();
@@ -857,6 +895,5 @@ final class Plugin
             'shown' => \count($results),
             'limit' => $limit,
         ]);
-
     }
 }

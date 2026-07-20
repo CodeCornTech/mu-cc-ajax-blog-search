@@ -3,7 +3,7 @@
  * Plugin Name: MU CC Ajax Blog Search
  * Plugin URI:  https://github.com/CodeCornTech/mu-cc-ajax-blog-search
  * Description: Attiva la ricerca AJAX nei widget di ricerca del blog con namespace CodeCorn .
- * Version:     1.0.16-debug
+ * Version:     1.1.22
  * Requires at least: 6.0
  * Requires PHP: 8.0
  * Author:      CodeCorn™ Technology
@@ -26,7 +26,7 @@ defined('ABSPATH') || exit;
 defined('MU_CC_ABS_JS_DEBUG') || define('MU_CC_ABS_JS_DEBUG', true); /**  add_filter('cc_ajax_blog_search_js_debug', '__return_true'); */
 defined('MU_CC_ABS_PHP_DEBUG') || define('MU_CC_ABS_PHP_DEBUG', true); /**  add_filter('cc_ajax_blog_search_php_debug', '__return_true'); */
 defined('MU_CC_ABS_I18N_DEBUG') || define('MU_CC_ABS_I18N_DEBUG', false);  /** Oppure via filtro: add_filter('cc_abs_i18n_debug', '__return_true'); */
-defined('MU_CC_ABS_VERSION') || define('MU_CC_ABS_VERSION', '1.0.16-debug');
+defined('MU_CC_ABS_VERSION') || define('MU_CC_ABS_VERSION', '1.1.22');
 defined('MU_CC_AJAX_ACTION') || define('MU_CC_AJAX_ACTION', 'cc_ajax_blog_search'); # look _ and -
 defined('MU_CC_ABS_TEXT_DOMAIN') || define('MU_CC_ABS_TEXT_DOMAIN', 'cc-ajax-blog-search'); # look _ and -
 

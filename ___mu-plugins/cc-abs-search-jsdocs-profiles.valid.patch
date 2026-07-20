@@ -1,0 +1,470 @@
+--- a/cc-ajax-blog-search-search.js
++++ b/cc-ajax-blog-search-search.js
+@@ -29,7 +29,7 @@
+  * - gestione sidebar / overlay mobile;
+  * - query WordPress lato server.
+  *
+- * @version 1.1.1-debug
++ * @version 1.2.0-debug
+  */
+ 
+ (function (w, $) {
+@@ -58,6 +58,8 @@
+      *     nonce,
+      *     debug,
+      *     context,
++     *     profiles,
++     *     show_thumb,
+      *     ...
+      * }
+      */
+@@ -74,6 +76,25 @@
+      */
+     const ABS = w.CC_ABS || null;
+ 
++    /**
++     * Profilo normalizzato associato a uno o più form di ricerca.
++     *
++     * Ogni profilo mantiene indipendenti:
++     * - selettori DOM;
++     * - scope logico;
++     * - post type ammessi;
++     * - etichetta mostrata nel dropdown;
++     * - abilitazione delle thumbnail.
++     *
++     * @typedef {Object} CCABSSearchProfile
++     * @property {string} id Identificatore univoco del profilo.
++     * @property {string} scope Scope logico inviato al server.
++     * @property {Array<string>} post_type Post type inviati al server.
++     * @property {Array<string>} selectors Selettori dei form associati.
++     * @property {string} label Etichetta leggibile del contesto.
++     * @property {boolean} show_thumb Abilitazione thumbnail.
++     */
++
+     // ------------------------------------------------------------
+     // Risoluzione debug
+     // ------------------------------------------------------------
+@@ -175,41 +196,174 @@
+     }
+ 
+     // ------------------------------------------------------------
+-    // Risoluzione selettori
++    // Risoluzione selettori e profili
+     // ------------------------------------------------------------
+ 
++    /**
++     * Normalizza una lista di stringhe ricevuta dalla configurazione PHP.
++     *
++     * La normalizzazione:
++     * - scarta valori non stringa;
++     * - applica trim;
++     * - elimina valori vuoti;
++     * - elimina duplicati mantenendo l'ordine.
++     *
++     * @param {*} value
++     * @return {Array<string>}
++     */
++    function normalizeStringList(value) {
++        if (!Array.isArray(value)) {
++            return [];
++        }
++
++        return [
++            ...new Set(
++                value
++                    .filter((item) => typeof item === 'string')
++                    .map((item) => item.trim())
++                    .filter(Boolean)
++            ),
++        ];
++    }
++
++    /**
++     * Selettori provenienti dal contesto storico del plugin.
++     *
++     * @type {Array<string>}
++     */
++    const legacySelectors = normalizeStringList(
++        CFG.context?.selectors
++    );
++
++    /**
++     * Profilo compatibile con la configurazione precedente
++     * all'introduzione dei profili indipendenti per form.
++     *
++     * Viene usato quando PHP non espone profili espliciti.
++     *
++     * @type {CCABSSearchProfile}
++     */
+     const legacyProfile = {
+         id: 'legacy',
+-        scope: CFG.context?.scope || 'global',
+-        post_type: Array.isArray(CFG.context?.post_type) ? CFG.context.post_type : [],
+-        selectors: Array.isArray(CFG.context?.selectors) && CFG.context.selectors.length ? CFG.context.selectors.filter((item) => typeof item === 'string' && item.trim()) : ['.search-form'],
++        scope:
++            typeof CFG.context?.scope === 'string' &&
++            CFG.context.scope.trim()
++                ? CFG.context.scope.trim()
++                : 'global',
++        post_type: normalizeStringList(
++            CFG.context?.post_type
++        ),
++        selectors: legacySelectors.length
++            ? legacySelectors
++            : ['.search-form'],
+         label: '',
+         show_thumb: !!CFG.show_thumb,
+     };
+ 
+-    const rawProfiles = CFG.profiles && typeof CFG.profiles === 'object' ? CFG.profiles : {};
++    /**
++     * Profili grezzi generati lato PHP tramite il filtro:
++     *
++     *     cc_ajax_blog_search_profiles
++     *
++     * @type {Object<string, Object>}
++     */
++    const rawProfiles =
++        CFG.profiles &&
++        typeof CFG.profiles === 'object' &&
++        !Array.isArray(CFG.profiles)
++            ? CFG.profiles
++            : {};
+ 
++    /**
++     * Profili espliciti normalizzati e utilizzabili.
++     *
++     * I profili senza ID o senza selettori validi vengono scartati.
++     *
++     * @type {Array<CCABSSearchProfile>}
++     */
+     const configuredProfiles = Object.entries(rawProfiles)
+         .map(([id, config]) => {
+-            const profileSelectors = Array.isArray(config?.selectors) ? config.selectors.filter((item) => typeof item === 'string' && item.trim()) : [];
++            const profileId =
++                typeof id === 'string'
++                    ? id.trim()
++                    : '';
++
++            const profileSelectors = normalizeStringList(
++                config?.selectors
++            );
+ 
+             return {
+-                id,
+-                scope: typeof config?.scope === 'string' && config.scope.trim() ? config.scope : 'global',
+-                post_type: Array.isArray(config?.post_type) ? config.post_type.filter((item) => typeof item === 'string' && item.trim()) : [],
++                id: profileId,
++                scope:
++                    typeof config?.scope === 'string' &&
++                    config.scope.trim()
++                        ? config.scope.trim()
++                        : 'global',
++                post_type: normalizeStringList(
++                    config?.post_type
++                ),
+                 selectors: profileSelectors,
+-                label: typeof config?.label === 'string' ? config.label : '',
+-                show_thumb: typeof config?.show_thumb === 'boolean' ? config.show_thumb : !!CFG.show_thumb,
++                label:
++                    typeof config?.label === 'string'
++                        ? config.label.trim()
++                        : '',
++                show_thumb:
++                    typeof config?.show_thumb === 'boolean'
++                        ? config.show_thumb
++                        : !!CFG.show_thumb,
+             };
+         })
+-        .filter((profile) => profile.selectors.length);
++        .filter((profile) => {
++            return (
++                profile.id &&
++                profile.selectors.length
++            );
++        });
+ 
+-    const activeProfiles = configuredProfiles.length ? configuredProfiles : [legacyProfile];
++    /**
++     * Profili effettivamente attivi nella pagina corrente.
++     *
++     * La presenza di profili espliciti impedisce al selettore legacy
++     * di intercettare form estranei alla configurazione corrente.
++     *
++     * @type {Array<CCABSSearchProfile>}
++     */
++    const activeProfiles = configuredProfiles.length
++        ? configuredProfiles
++        : [legacyProfile];
+ 
+-    const selectors = [...new Set(activeProfiles.flatMap((profile) => profile.selectors))];
++    /**
++     * Lista piatta e deduplicata dei selettori attivi.
++     *
++     * @type {Array<string>}
++     */
++    const selectors = [
++        ...new Set(
++            activeProfiles.flatMap(
++                (profile) => profile.selectors
++            )
++        ),
++    ];
+ 
++    /**
++     * Selettore aggregato usato dalle scansioni DOM.
++     *
++     * @type {string}
++     */
+     const selector = selectors.join(',');
+ 
++    /**
++     * Determina il profilo associato a uno specifico form.
++     *
++     * I profili vengono controllati nell'ordine ricevuto da PHP.
++     * Il primo selettore corrispondente determina il profilo.
++     *
++     * Un selettore CSS non valido viene ignorato e registrato
++     * nella diagnostica senza interrompere gli altri profili.
++     *
++     * @param {HTMLFormElement|HTMLElement} form
++     * @return {CCABSSearchProfile}
++     */
+     function resolveProfile(form) {
+         const matchedProfile = activeProfiles.find((profile) => {
+             return profile.selectors.some((profileSelector) => {
+@@ -243,6 +397,8 @@
+         selector,
+         initialMatches: selector ? $(selector).length : 0,
+         context: CFG.context || null,
++        configuredProfiles,
++        activeProfiles,
+     });
+ 
+     // ------------------------------------------------------------
+@@ -276,48 +432,74 @@
+     /**
+      * Costruisce l'URL della ricerca WordPress completa.
+      *
+-     * Nel contesto globale viene inviato soltanto:
+-     *     ?s=termine
+-     *
+-     * Nei contesti scoped vengono aggiunti:
++     * L'URL conserva il profilo che ha originato la ricerca,
++     * permettendo alla SERP WordPress di applicare lo stesso perimetro
++     * usato dalla richiesta AJAX.
++     *
++     * Parametri prodotti:
++     * - s;
++     * - cc_abs_profile, salvo il profilo legacy;
+      * - post_type[];
+      * - scope.
+      *
++     * Il fallback al profilo legacy mantiene compatibilità con
++     * eventuali chiamate precedenti prive del secondo parametro.
++     *
+      * @param {string} term
++     * @param {CCABSSearchProfile} [profile]
+      * @return {string}
+      */
+     function buildSearchUrl(term, profile) {
++        const resolvedProfile = profile || legacyProfile;
+         const params = new URLSearchParams();
+ 
+         params.set('s', term);
+ 
+-        if (profile.id && profile.id !== 'legacy') {
+-            params.set('cc_abs_profile', profile.id);
++        if (
++            resolvedProfile.id &&
++            resolvedProfile.id !== 'legacy'
++        ) {
++            params.set(
++                'cc_abs_profile',
++                resolvedProfile.id
++            );
+         }
+ 
+-        if (Array.isArray(profile.post_type)) {
+-            profile.post_type.forEach((postType) => {
+-                params.append('post_type[]', postType);
+-            });
+-        }
++        resolvedProfile.post_type.forEach((postType) => {
++            params.append(
++                'post_type[]',
++                postType
++            );
++        });
+ 
+-        if (profile.scope) {
+-            params.set('scope', profile.scope);
++        if (resolvedProfile.scope) {
++            params.set(
++                'scope',
++                resolvedProfile.scope
++            );
+         }
+ 
+-        return w.location.origin + '/?' + params.toString();
++        return (
++            w.location.origin +
++            '/?' +
++            params.toString()
++        );
+     }
+ 
+     /**
+      * Costruisce il footer con collegamento alla pagina risultati completa.
+      *
+      * @param {string} term
++     * @param {CCABSSearchProfile} profile
+      * @return {string}
+      */
+-    function buildFooter(term) {
++    function buildFooter(term, profile) {
+         return `
+             <div class="cc-ajax-search-footer">
+-                <a class="cc-ajax-search-all" href="${buildSearchUrl(term)}">
++                <a
++                    class="cc-ajax-search-all"
++                    href="${buildSearchUrl(term, profile)}"
++                >
+                     Mostra tutti i risultati →
+                 </a>
+             </div>
+@@ -331,24 +513,33 @@
+      * così eventuale markup digitato dall'utente non viene interpretato.
+      *
+      * @param {string} term
++     * @param {CCABSSearchProfile} [profile]
+      * @return {string}
+      */
+     function buildHeader(term, profile) {
++        const resolvedProfile = profile || legacyProfile;
++
+         const labels = {
+             single: 'singolo',
+             archive: 'archivio',
+             global: 'globale',
+         };
+ 
+-        const scopeLabel = profile.label || labels[profile.scope] || profile.scope;
+-
+-        const safeTerm = $('<div>').text(term).html();
++        const scopeLabel =
++            resolvedProfile.label ||
++            labels[resolvedProfile.scope] ||
++            resolvedProfile.scope ||
++            'ricerca';
++
++        const safeTerm = $('<div>')
++            .text(term)
++            .html();
+ 
+         return `
+-        <div class="cc-ajax-search-heading">
+-            Risultati per "<strong>${safeTerm}</strong>" — ${scopeLabel}
+-        </div>
+-    `;
++            <div class="cc-ajax-search-heading">
++                Risultati per "<strong>${safeTerm}</strong>" — ${scopeLabel}
++            </div>
++        `;
+     }
+ 
+     /**
+@@ -378,18 +569,28 @@
+      * - layout senza thumbnail;
+      * - data;
+      * - excerpt;
+-     * - footer verso la ricerca completa.
++     * - footer verso la ricerca completa;
++     * - configurazione indipendente per ciascun profilo.
+      *
+      * @param {JQuery} $box
+      * @param {Array<object>} items
+      * @param {string} term
++     * @param {CCABSSearchProfile} [profile]
+      * @return {void}
+      */
+     function renderResults($box, items, term, profile) {
++        const resolvedProfile = profile || legacyProfile;
++
+         diag('log', 'render results', {
+             term,
+             count: items?.length || 0,
+             items,
++            profile: {
++                id: resolvedProfile.id,
++                scope: resolvedProfile.scope,
++                post_type: resolvedProfile.post_type,
++                show_thumb: resolvedProfile.show_thumb,
++            },
+         });
+ 
+         // Nessun risultato restituito dalla query.
+@@ -400,7 +601,7 @@
+             return;
+         }
+ 
+-        let html = buildHeader(term, profile) + '<ul class="cc-ajax-search-list">';
++        let html = buildHeader(term, resolvedProfile) + '<ul class="cc-ajax-search-list">';
+ 
+         items.forEach((item) => {
+             /**
+@@ -408,7 +609,7 @@
+              * - la feature è abilitata lato PHP;
+              * - il singolo risultato contiene un URL immagine valido.
+              */
+-            const hasThumb = profile.show_thumb && item.thumb;
++            const hasThumb = resolvedProfile.show_thumb && item.thumb;
+ 
+             let itemClass = 'cc-ajax-search-item';
+ 
+@@ -474,7 +675,7 @@
+             html += '</a></li>';
+         });
+ 
+-        html += '</ul>' + buildFooter(term, profile);
++        html += '</ul>' + buildFooter(term, resolvedProfile);
+ 
+         $box.html(html);
+         showBox($box);
+@@ -502,9 +703,21 @@
+         if ($form.data('ccAjaxSearchInited')) {
+             return false;
+         }
++
++        /**
++         * Profilo risolto una sola volta per il singolo form.
++         *
++         * Ogni form conserva così il proprio perimetro anche quando
++         * nella pagina sono presenti altri form ABS indipendenti.
++         *
++         * @type {CCABSSearchProfile}
++         */
+         const profile = resolveProfile(form);
+ 
+-        $form.attr('data-cc-abs-profile', profile.id);
++        $form.attr(
++            'data-cc-abs-profile',
++            profile.id
++        );
+         /**
+          * WordPress usa normalmente:
+          *     input[name="s"]
+@@ -738,6 +951,13 @@
+             reason,
+             form,
+             input: $input.get(0),
++            profile: {
++                id: profile.id,
++                scope: profile.scope,
++                post_type: profile.post_type,
++                selectors: profile.selectors,
++                show_thumb: profile.show_thumb,
++            },
+         });
+ 
+         return true;
