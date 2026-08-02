@@ -1,58 +1,49 @@
-# Wordpress - ignore core, configuration, examples, uploads and logs.
-# https://github.com/github/gitignore/blob/main/WordPress.gitignore
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
 
-# Core
-#
-# Note: if you want to stage/commit WP core files
-# you can delete this whole section/until Configuration.
-/wp-admin/
-/wp-content/index.php
-/wp-content/languages
-/wp-content/plugins/index.php
-/wp-content/themes/index.php
-/wp-includes/
-/index.php
-/license.txt
-/readme.html
-/wp-*.php
-/xmlrpc.php
-
-# Configuration
-wp-config.php
-
-# Example themes
-/wp-content/themes/twenty*/
-
-# Example plugin
-/wp-content/plugins/hello.php
-
-# Uploads
-/wp-content/uploads/
-
-# Log files
+# Runtime / dependencies
+node_modules/
+vendor/
 *.log
 
-# htaccess
-/.htaccess
+# Build and distribution artifacts
+build/
+dist/
+*.zip
+*.tar
+*.tar.gz
+*.tgz
 
-# All plugins
-#
-# Note: If you wish to whitelist plugins,
-# uncomment the next line
-#/wp-content/plugins
-
-# All themes
-#
-# Note: If you wish to whitelist themes,
-# uncomment the next line
-#/wp-content/themes
-.DS_Store
-/.vscode
-/mu-plugins/codecorn/ajax-blog-search/assets/css/_STASH
+# Local working material
+_STASH/
+**/_STASH/
+___*/
+__checkpoint*/
+dev/
+z_repo_dist/
+*.bak
+*.bak.*
+*.malformed.*
+*.orig
+*.rej
 README_*
 TODO_*
--l.txt
-im.txt.txt
-image.png
-patches_horseno.php
-/tools/_STASH
+
+# Accidental scratch files
+from pathlib import Path.py
+tools/from pathlib import Path.py
+
+# Local WordPress installations
+wp-admin/
+wp-includes/
+wp-content/
+wp-config.php
+wp-*.php
+xmlrpc.php
+.htaccess

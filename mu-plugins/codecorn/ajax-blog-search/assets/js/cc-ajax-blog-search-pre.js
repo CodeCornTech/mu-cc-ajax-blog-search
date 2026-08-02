@@ -12,7 +12,7 @@
  *
  * This file MUST be loaded before any CC Ajax Blog Search feature.
  *
- * @version 1.1.0
+ * @version 1.1.22
  */
 
 (function (w) {

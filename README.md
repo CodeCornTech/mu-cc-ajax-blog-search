@@ -1,259 +1,230 @@
 # MU CC Ajax Blog Search
 
-**MU plugin** per WordPress che trasforma il classico _widget di ricerca del blog_ in una **ricerca AJAX live**, senza modificare il markup del tema.
+Ricerca AJAX **multi-contesto** e **multi-profilo** per WordPress, distribuita come Must-Use plugin.
 
-Pensato per essere “drop-in” dentro `wp-content/mu-plugins`, con codice strutturato in `codecorn/ajax-blog-search` e un bootstrap minimale che registra hook e asset.
+Il plugin intercetta uno o più form di ricerca già presenti nel tema, assegna a ciascuno un profilo indipendente e restituisce risultati coerenti con post type, contesto e configurazione server-side. Non richiede modifiche al markup del tema e conserva il normale submit WordPress come fallback.
 
----
+## Stato del progetto
 
-## 🚀 Caratteristiche principali
+- Versione: **1.2.0**
+- WordPress: **6.0+**
+- PHP: **8.0+**
+- Licenza: **MIT**
+- Text domain: `cc-ajax-blog-search`
+- Endpoint AJAX: `cc_ajax_blog_search`
 
-- 🔍 Ricerca **AJAX** sui post del blog direttamente dal widget `widget_search`
-- 🧩 Nessuna modifica al template del tema → il form rimane quello standard
-- 💬 Risultati mostrati sotto il campo di ricerca, con titolo, data ed excerpt
-- ⚙️ Fallback automatico: se JS è disattivo, il form continua a funzionare in modo classico
-- 🧱 Struttura pulita e organizzata:
+## Funzionalità
 
-  - bootstrap MU → `mu-cc-ajax-blog-search.php`
-  - core PHP → `codecorn/ajax-blog-search/src/Plugin.php`
-  - asset → `assets/js` e `assets/css`
+- ricerca live con debounce e annullamento delle richieste precedenti;
+- supporto a utenti autenticati e visitatori;
+- profili indipendenti per form tramite `cc_ajax_blog_search_profiles`;
+- ricerca su uno o più post type;
+- rilevamento dei contesti globali, singoli, archivi e tassonomie;
+- selettori configurabili con modalità merge, override o disable;
+- thumbnail ed excerpt configurabili per profilo;
+- query server-side estendibile prima dell'esecuzione;
+- dropdown risultati accessibile e ancorabile al form o a un selettore dedicato;
+- pannello sidebar mobile opzionale;
+- fallback al normale submit WordPress quando JavaScript non è disponibile;
+- localizzazione frontend e logger condiviso CodeCorn.
 
-- 🧭 Namespace dedicato `CodeCorn\AjaxBlogSearch`
+## Struttura canonica
 
----
-
-## 🧰 Requisiti
-
-- WordPress 5.x o superiore
-- PHP 7.4 o superiore (consigliato)
-- jQuery frontend attivo (WordPress lo include di default nei temi classici)
-
----
-
-## 📁 Struttura del plugin
-
-```
+```text
 mu-plugins/
-  mu-cc-ajax-blog-search.php        # bootstrap MU
-  codecorn/
-    ajax-blog-search/
-      index.php                     # stub di sicurezza
-      src/
-        Plugin.php                  # core del plugin (namespace CodeCorn\AjaxBlogSearch)
-      assets/
-        js/
-          ajax-blog-search.js       # logica AJAX lato client
-        css/
-          ajax-blog-search.css      # stile minimo risultati
+├── mu-cc-ajax-blog-search.php
+└── codecorn/
+    ├── ajax-blog-search/
+    │   ├── index.php
+    │   ├── src/
+    │   │   └── Plugin.php
+    │   ├── assets/
+    │   │   ├── css/
+    │   │   │   └── cc-ajax-blog-search.css
+    │   │   └── js/
+    │   │       ├── cc-ajax-blog-search-pre.js
+    │   │       ├── cc-ajax-blog-search-search.js
+    │   │       └── cc-ajax-blog-search-sidebar.js
+    │   └── languages/
+    │       ├── cc-ajax-blog-search.pot
+    │       ├── cc-ajax-blog-search-it_IT.po
+    │       └── cc-ajax-blog-search-it_IT.mo
+    └── core/
+        ├── index.php
+        └── js/
+            └── cc-logger-core-pre.js
 ```
 
----
+L'unico entrypoint MU è `mu-plugins/mu-cc-ajax-blog-search.php`. La directory `codecorn/` contiene esclusivamente codice, asset e infrastruttura interna.
 
-## ⚙️ Installazione
+## Installazione
 
-1. **Clona la repo** in `wp-content/mu-plugins`:
+La directory `mu-plugins/` della repository deve essere copiata **dentro** `wp-content/mu-plugins/`. Non clonare l'intera repository direttamente in quella directory, altrimenti l'entrypoint rimane annidato e WordPress non lo carica.
 
-   ```bash
-   cd wp-content/mu-plugins
-   git clone https://github.com/CodeCornTech/mu-cc-ajax-blog-search.git
-   ```
+```bash
+#!/usr/bin/env bash
 
-   Assicurati che:
+git clone https://github.com/CodeCornTech/mu-cc-ajax-blog-search.git /tmp/mu-cc-ajax-blog-search
 
-   - `mu-cc-ajax-blog-search.php` sia **direttamente** dentro `mu-plugins/`
-   - la cartella `codecorn/ajax-blog-search/` sia accanto.
-
-2. Vai in **Bacheca → Plugin → Plugin uso obbligato (Must Use)**
-   e verifica che **MU CC Ajax Blog Search** sia visibile.
-
-3. Il tema deve usare un **widget di ricerca** standard (`widget_search`).
-   Se nel markup trovi:
-
-   ```html
-   <aside class="widget widget_search">
-     <form class="search-form" ...></form>
-   </aside>
-   ```
-
-   allora il plugin si aggancia automaticamente.
-   Nessuna configurazione aggiuntiva necessaria.
-
----
-
-## ⚙️ Come funziona
-
-### Lato PHP
-
-La classe principale `CodeCorn\AjaxBlogSearch\Plugin`:
-
-- registra JS + CSS quando serve
-- espone un endpoint AJAX:
-
-  - `action = cc_ajax_blog_search`
-  - disponibile per utenti loggati e ospiti
-
-- esegue una `WP_Query` con il termine `s` passato dal client
-- restituisce un JSON strutturato così:
-
-```json
-{
-  "success": true,
-  "data": {
-    "results": [
-      {
-        "title": "Esempio articolo",
-        "url": "https://sito.it/esempio-articolo/",
-        "date": "10 Novembre 2025",
-        "excerpt": "Estratto accorciato del contenuto …",
-        "thumb": "https://sito.it/wp-content/uploads/2025/11/thumb.jpg"
-      }
-    ]
-  }
-}
+rsync -a \
+    /tmp/mu-cc-ajax-blog-search/mu-plugins/ \
+    /percorso/wordpress/wp-content/mu-plugins/
 ```
 
----
+Verifica quindi in **Plugin → Plugin installati → Must-Use** che compaia `MU CC Ajax Blog Search`.
 
-### Lato JS
+## Architettura runtime
 
-Lo script `assets/js/ajax-blog-search.js`:
+### Bootstrap PHP
 
-- trova tutti i form `.widget_search form.search-form`
-- crea un box risultati `<div class="cc-ajax-search-results">` subito dopo il form
-- intercetta:
+L'entrypoint:
 
-  - `submit` → effettua AJAX
-  - `keyup` → ricerca live con debounce
+1. dichiara versione, handle, text domain e percorsi;
+2. registra il logger condiviso `cc-logger-core-pre`;
+3. carica le traduzioni MU-safe;
+4. inizializza `CodeCorn\AjaxBlogSearch\Plugin`.
 
-- richiama `admin-ajax.php?action=cc_ajax_blog_search` passando `s` e `nonce`
-- renderizza dinamicamente titolo, data, excerpt e thumb (opzionale)
+### Moduli frontend
 
-Se il campo è vuoto, la box risultati viene svuotata.
+- `pre`: normalizza configurazione, profili e infrastruttura condivisa;
+- `search`: intercetta i form, invia le richieste AJAX e renderizza i risultati;
+- `sidebar`: gestisce il pannello mobile opzionale.
 
----
+### Backend AJAX
 
-## 🧩 Filtri e personalizzazioni
+Il backend valida il nonce, normalizza scope e post type, applica i filtri di configurazione, esegue `WP_Query` e restituisce JSON normalizzato.
 
-### 🔹 Miniatura (thumbnail)
+## Profilo minimo
+
+Un profilo associa un form a uno scope e a uno o più post type:
 
 ```php
-add_filter('cc_ajax_blog_search_show_thumbnail', '__return_true');
+<?php
+add_filter(
+    'cc_ajax_blog_search_profiles',
+    static function (array $profiles, array $page_context): array {
+        $profiles['site_header'] = [
+            'selectors' => [
+                '#site-header form.search-form',
+            ],
+            'scope' => 'site_header',
+            'post_type' => [
+                'page',
+                'post',
+            ],
+            'label' => 'sito',
+            'show_thumb' => false,
+            'ui' => [
+                'results_anchor' => 'form',
+                'results_gap' => 10,
+            ],
+        ];
 
-// opzionale: dimensione immagine
-add_filter('cc_ajax_blog_search_thumbnail_size', function () {
-    return 'medium'; // oppure una image-size custom
-});
+        return $profiles;
+    },
+    20,
+    2
+);
 ```
 
----
+Per esempi completi e regole di sicurezza server-side consulta [`docs/profiles.md`](docs/profiles.md).
 
-### 🔹 Sidebar mobile collapsabile / floating
+## Filtri principali
 
-Permette di trasformare i widget della sidebar in un pannello mobile a comparsa (overlay o barra top).
-Disattivato di default.
+| Filtro | Scopo |
+| --- | --- |
+| `cc_ajax_blog_search_profiles` | Registra profili indipendenti per form |
+| `cc_ajax_blog_search_selectors` | Estende, sostituisce o disabilita i selettori del contesto |
+| `cc_ajax_blog_search_taxonomy_post_type` | Risolve il post type di una tassonomia |
+| `cc_ajax_blog_search_query_args` | Modifica gli argomenti finali di `WP_Query` |
+| `cc_ajax_blog_search_results_limit` | Imposta il numero massimo di risultati |
+| `cc_ajax_blog_search_show_thumbnail` | Abilita la thumbnail |
+| `cc_ajax_blog_search_thumbnail_size` | Imposta la dimensione della thumbnail |
+| `cc_ajax_blog_search_show_excerpt` | Abilita o disabilita l'excerpt |
+| `cc_ajax_blog_search_excerpt_source` | Fornisce una sorgente alternativa per l'excerpt |
+| `cc_ajax_blog_search_excerpt_words` | Imposta la lunghezza massima dell'excerpt |
+| `cc_ajax_blog_search_result_excerpt` | Modifica l'excerpt normalizzato |
+| `cc_ajax_blog_search_sidebar_toggle_enabled` | Abilita il pannello sidebar mobile |
+| `cc_ajax_blog_search_sidebar_toggle_mode` | Seleziona modalità `floating` o `top` |
+| `cc_ajax_blog_search_sidebar_toggle_breakpoint` | Imposta il breakpoint del pannello |
+| `cc_ajax_blog_search_sidebar_toggle_label` | Personalizza l'etichetta del toggle |
+
+## Debug
+
+Il debug è disattivato per impostazione predefinita.
+
+In `wp-config.php`, prima del caricamento dei MU plugin:
 
 ```php
-// attiva la feature
-add_filter('cc_ajax_blog_search_sidebar_toggle_enabled', '__return_true');
-
-// modalità: 'floating' (default) oppure 'top'
-add_filter('cc_ajax_blog_search_sidebar_toggle_mode', function () {
-    return 'floating'; // oppure 'top'
-});
-
-// breakpoint mobile (px)
-add_filter('cc_ajax_blog_search_sidebar_toggle_breakpoint', function () {
-    return 992;
-});
-
-// label del pulsante toggle
-add_filter('cc_ajax_blog_search_sidebar_toggle_label', function () {
-    return 'Filtri & ricerca';
-});
+<?php
+define('MU_CC_ABS_JS_DEBUG', true);
+define('MU_CC_ABS_PHP_DEBUG', true);
 ```
 
-Quando disattivato o non definito, il CSS non modifica il comportamento della sidebar.
+Il debug PHP produce log soltanto quando anche `WP_DEBUG` è attivo.
 
----
-
-### 🔹 Debug Layer
-
-Il sistema di debug è gestito interamente da PHP ed esposto al JS tramite `wp_localize_script`.
-
-Puoi attivarlo in 3 modi:
-
-#### 1. via `wp-config.php`
+Le stesse impostazioni possono essere filtrate:
 
 ```php
-define('CC_AJAX_BLOG_SEARCH_DEBUG', true);
+<?php
+add_filter('cc_ajax_blog_search_js_debug', '__return_true');
+add_filter('cc_ajax_blog_search_php_debug', '__return_true');
 ```
 
-#### 2. via filtro (vince sul define)
+## Validazione locale
 
-```php
-add_filter('cc_ajax_blog_search_debug', '__return_true');
+```bash
+#!/usr/bin/env bash
+
+find mu-plugins -name '*.php' -print0 \
+    | xargs -0 -n1 php -l
+
+node --check \
+    mu-plugins/codecorn/ajax-blog-search/assets/js/cc-ajax-blog-search-pre.js
+
+node --check \
+    mu-plugins/codecorn/ajax-blog-search/assets/js/cc-ajax-blog-search-search.js
+
+node --check \
+    mu-plugins/codecorn/ajax-blog-search/assets/js/cc-ajax-blog-search-sidebar.js
+
+node --check \
+    mu-plugins/codecorn/core/js/cc-logger-core-pre.js
 ```
 
-#### 3. via console JS (solo runtime)
+La checklist completa di rilascio è in [`docs/release-checklist.md`](docs/release-checklist.md).
 
-```js
-window.AJX_CLP_DB = true;
+## Traduzioni
+
+Dalla root della repository, con il pacchetto `wp i18n` disponibile:
+
+```bash
+#!/usr/bin/env bash
+
+wp i18n make-pot \
+    mu-plugins/codecorn/ajax-blog-search \
+    mu-plugins/codecorn/ajax-blog-search/languages/cc-ajax-blog-search.pot \
+    --domain=cc-ajax-blog-search
+
+wp i18n make-mo \
+    mu-plugins/codecorn/ajax-blog-search/languages
 ```
 
-Quando attivo, tutti i log `console.log` debug del plugin vengono stampati con prefisso `[AJX-SIDEBAR]`.
+## Versionamento
 
----
+La versione deve essere aggiornata in:
 
-### 🔹 Traduzioni frontend
+- header del MU plugin;
+- costante `MU_CC_ABS_VERSION`;
+- `README.md`;
+- `CHANGELOG.md`.
 
-I testi mostrati dal JS sono passati via `wp_localize_script`:
+Gli asset WordPress usano `MU_CC_ABS_VERSION` per il cache busting.
 
-- `no_results_text`
-- `error_text`
+## Changelog
 
-Puoi sovrascriverli in un altro MU plugin o nel tema:
+Vedi [`CHANGELOG.md`](CHANGELOG.md).
 
-```php
-add_filter('cc_ajax_blog_search_i18n', function ($strings) {
-    $strings['no_results_text'] = 'Nessun risultato per la tua ricerca.';
-    $strings['error_text']      = 'Errore temporaneo, riprova più tardi.';
-    return $strings;
-});
-```
+## Licenza
 
----
-
-## 🧪 Debug manuale
-
-1. Apri la pagina del blog
-2. Premi `F12 → Network`
-3. Digita almeno 3 caratteri nel campo ricerca
-4. Dovresti vedere chiamate a:
-
-```
-/wp-admin/admin-ajax.php?action=cc_ajax_blog_search&s=...
-```
-
-Se la risposta è `200 OK` e contiene JSON valido → il backend è ok.
-Se non compare il box risultati → verifica CSS del tema o conflitti JS.
-
----
-
-## 🧭 Roadmap
-
-- [ ] Filtro per post type custom
-- [ ] Hook per template markup personalizzato
-- [ ] Supporto multi-istanza con config separate
-- [ ] Internazionalizzazione completa (`cc_ajax_blog_search_i18n`)
-- [ ] Auto-scope alla categoria corrente del blog
-
----
-
-## ⚖️ Licenza
-
-**MIT License** — usa, forka, migliora e manda una PR ✨
-
-© CodeCorn Technology SRLS — _Federico Girolami_
-_“Digital Solution Architecture with Style.”_
-
----
+MIT © Federico Girolami / CodeCorn™ Technology.

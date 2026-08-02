@@ -19,7 +19,7 @@
  * - logica di ricerca
  * - bootstrap / debug resolver
  *
- * @version 1.1.0
+ * @version 1.1.22
  */
 
 (function (w, $) {
