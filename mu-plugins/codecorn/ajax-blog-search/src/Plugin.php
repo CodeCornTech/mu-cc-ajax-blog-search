@@ -1047,6 +1047,7 @@ final class Plugin
             $results[] = [
                 'title' => get_the_title(),
                 'url' => get_permalink(),
+                'post_type' => sanitize_key((string) get_post_type($post_id)),
                 'date' => get_the_date(),
                 'excerpt' => $this->resolve_result_excerpt(
                     $post_id,

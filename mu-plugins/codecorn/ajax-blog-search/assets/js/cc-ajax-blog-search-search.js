@@ -714,6 +714,9 @@
              * - il singolo risultato contiene un URL immagine valido.
              */
             const hasThumb = resolvedProfile.show_thumb && item.thumb;
+            const postType = /^[a-z0-9_-]+$/.test(String(item.post_type || ''))
+                ? item.post_type
+                : '';
 
             let itemClass = 'cc-ajax-search-item';
 
@@ -721,7 +724,7 @@
                 itemClass += ' cc-ajax-search-item--with-thumb';
             }
 
-            html += `<li class="${itemClass}"><a href="${item.url}">`;
+            html += `<li class="${itemClass}"${postType ? ` data-post-type="${postType}"` : ''}><a href="${item.url}">`;
 
             if (hasThumb) {
                 /**
