@@ -448,6 +448,46 @@ final class Plugin
 
         return [];
     }
+
+    /**
+     * Resolve an exact one-word query to one of the allowed post types.
+     *
+     * This does not perform fuzzy matching and never trusts the request alone:
+     * the candidate must be present in the final query post_type perimeter.
+     *
+     * @param string               $term Search term.
+     * @param string|string[]      $post_types Final query post types.
+     *
+     * @return string Empty string when no shortcut applies.
+     */
+    private function resolve_post_type_shortcut(
+        string $term,
+        $post_types
+    ): string {
+        $term = trim($term);
+
+        if (
+            $term === ''
+            || preg_match('/\\s/u', $term) === 1
+        ) {
+            return '';
+        }
+
+        $needle = sanitize_key($term);
+        if ($needle === '') {
+            return '';
+        }
+
+        $allowed = $this->normalize_post_types($post_types);
+
+        foreach ($allowed as $post_type) {
+            if ($needle === sanitize_key((string) $post_type)) {
+                return (string) $post_type;
+            }
+        }
+
+        return '';
+    }
     /**
      * Detect current search context.
      *
@@ -1015,7 +1055,49 @@ final class Plugin
             $term
         );
 
+        /**
+         * Optional exact CPT-name shortcut.
+         *
+         * Example:
+         *   term=podcast + post_type=[page,post,podcast]
+         *   => browse every published podcast instead of full-text searching
+         *      the word "podcast".
+         *
+         * Disabled by default: integrations opt in per profile/context.
+         *
+         * @param bool                 $enabled Shortcut state.
+         * @param array<string,mixed>  $context ABS request context.
+         * @param string               $term    Search term.
+         * @param array<string,mixed>  $args    Final query args before shortcut.
+         */
+        $post_type_shortcut_enabled = (bool) apply_filters(
+            'cc_ajax_blog_search_post_type_shortcut_enabled',
+            false,
+            $context,
+            $term,
+            $args
+        );
+
+        $post_type_shortcut = $post_type_shortcut_enabled
+            ? $this->resolve_post_type_shortcut(
+                $term,
+                $args['post_type'] ?? $context['post_type']
+            )
+            : '';
+
+        if ($post_type_shortcut !== '') {
+            $args['s'] = '';
+            $args['post_type'] = [$post_type_shortcut];
+            $args['posts_per_page'] = -1;
+            $args['paged'] = 1;
+        }
+
         if ($this->can_debug()) {
+            error_log('[CC ABS][AJAX] post_type_shortcut=' . (
+                $post_type_shortcut !== ''
+                    ? $post_type_shortcut
+                    : 'none'
+            ));
             error_log('[CC ABS][AJAX] query_args=' . wp_json_encode($args));
         }
 
@@ -1064,9 +1146,12 @@ final class Plugin
 
         wp_send_json_success([
             'results' => $results,
-            'total' => $total,        // 🔥 NUOVO
+            'total' => $total,
             'shown' => \count($results),
-            'limit' => $limit,
+            'limit' => isset($args['posts_per_page'])
+                ? (int) $args['posts_per_page']
+                : $limit,
+            'post_type_shortcut' => $post_type_shortcut,
         ]);
     }
 }
