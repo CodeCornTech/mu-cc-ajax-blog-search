@@ -478,16 +478,45 @@ final class Plugin
             return '';
         }
 
-        $allowed = $this->normalize_post_types($post_types);
+        /*
+         * IMPORTANT:
+         * $post_types is the FINAL query perimeter after
+         * cc_ajax_blog_search_query_args.
+         *
+         * Do not run it through normalize_post_types(): that helper uses the
+         * core legacy whitelist, while profiles are explicitly allowed to
+         * introduce registered CPTs such as podcast/eventi/galleria_video.
+         */
+        if (\is_string($post_types)) {
+            $candidates = [$post_types];
+        } elseif (\is_array($post_types)) {
+            $candidates = $post_types;
+        } else {
+            $candidates = [];
+        }
 
-        foreach ($allowed as $post_type) {
-            if ($needle === sanitize_key((string) $post_type)) {
-                return (string) $post_type;
+        $candidates = array_values(array_unique(array_filter(array_map(
+            static function ($post_type): string {
+                return \is_scalar($post_type)
+                    ? sanitize_key((string) $post_type)
+                    : '';
+            },
+            $candidates
+        ))));
+
+        foreach ($candidates as $post_type) {
+            if (
+                $post_type === $needle
+                && post_type_exists($post_type)
+                && is_post_type_viewable($post_type)
+            ) {
+                return $post_type;
             }
         }
 
         return '';
     }
+
     /**
      * Detect current search context.
      *
